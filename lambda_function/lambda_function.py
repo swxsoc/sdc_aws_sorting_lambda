@@ -2,7 +2,8 @@
 This module contains the handler function and the main function which contains the logic
 that initializes the FileSorter class in it's correct environment.
 
-TODO: Skeleton Code for initial repo, logic still needs to be implemented and docstrings expanded
+TODO: Skeleton Code for initial repo, logic still needs to be implemented
+and docstrings expanded
 """
 
 import logging
@@ -18,25 +19,30 @@ logger.setLevel(logging.DEBUG)
 def handler(event, context):
     """
     This is the lambda handler function that passes variables to the function that
-    handles the logic that initializes the FileProcessor class in it's correct environment.
+    handles the logic that initializes the FileProcessor class in it's correct
+    environment.
     """
     # Extract needed information from event
     try:
         file_key = event["FileKey"]
-        environment = os.getenv('LAMBDA_ENVIRONMENT')
-        # Pass required variables to sort function and returns a 200 (Successful) / 500 (Error) HTTP response
+        environment = os.getenv("LAMBDA_ENVIRONMENT")
+        # Pass required variables to sort function and returns a 200 (Successful)
+        # / 500 (Error) HTTP response
         response = sort_file(environment, file_key)
 
         return response
 
-    except:
-        return {"statusCode": 500, "body": json.dumps("Error Extracting Variables from Event")}
+    except BaseException as e:
+        return {
+            "statusCode": 500,
+            "body": json.dumps("Error Extracting Variables from Event: %s", e),
+        }
 
 
 def sort_file(environment, file_key):
     """
-    This is the main function that handles logic that initializes the FileProcessor class
-    in it's correct environment.
+    This is the main function that handles logic that initializes the
+    FileProcessor class in it's correct environment.
     """
 
     # Production (Official Release) Environment / Local Development
@@ -52,8 +58,8 @@ def sort_file(environment, file_key):
                 "body": json.dumps("File Sorted Successfully"),
             }
 
-        except:
-            logger.error("Error occurred with FileSorter")
+        except BaseException as e:
+            logger.error("Error occurred with FileSorter: %s", e)
 
             return {"statusCode": 500, "body": json.dumps("Error Sorting File")}
 
@@ -70,10 +76,13 @@ def sort_file(environment, file_key):
                 "body": json.dumps("File Sorted Successfully"),
             }
 
-        except:
-            logger.error("Error occurred with FileSorter")
+        except BaseException as e:
+            logger.error("Error occurred with FileSorter: %s", e)
 
             return {"statusCode": 500, "body": json.dumps("Error Sorting File")}
-    
+
     else:
-        return {"statusCode": 500, "body": json.dumps("Invalid key for environment")}
+        return {
+            "statusCode": 500,
+            "body": json.dumps("Invalid key for environment"),
+        }

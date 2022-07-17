@@ -10,7 +10,9 @@ app = cdk.App()
 SDCAWSSortingLambdaStack(
     app,
     "SDCAWSSortingLambdaStack",
-    env=cdk.Environment(account=os.getenv("CDK_DEFAULT_ACCOUNT"), region="us-east-2"),
+    env=cdk.Environment(
+        account=os.getenv("CDK_DEFAULT_ACCOUNT"), region="us-east-2"
+    ),
 )
 
 app.synth()

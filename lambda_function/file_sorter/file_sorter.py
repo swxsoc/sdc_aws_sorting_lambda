@@ -26,9 +26,8 @@ class FileSorter:
         """
 
         # Initialize Class Variables
-        self.bucket = 'swsoc-incoming'
+        self.bucket = "swsoc-incoming"
         self.file_key = file_key
-
 
     def sort_file(self):
         """
@@ -55,30 +54,27 @@ class FileSorter:
     def _copy_from_incoming_to_bucket(self, destination_bucket):
 
         """
-        Function to copy file from S3 incoming bucket using bucket key to destination bucket
+        Function to copy file from S3 incoming bucket using bucket key
+        to destination bucket
         """
         logger.info("Moving File: %s", self.file_key)
         try:
             # TODO: Add downloading logic
-            s3 = boto3.resource('s3')
-            copy_source = {
-                'Bucket': self.bucket,
-                'Key': self.file_key
-            }
+            s3 = boto3.resource("s3")
+            copy_source = {"Bucket": self.bucket, "Key": self.file_key}
             # Copy S3 file from incoming bucket to destination bucket
             s3.meta.client.copy(copy_source, destination_bucket, self.file_key)
             logger.info("File Moved Successfully: %s", self.file_key)
 
             # Remove file from incoming bucket
             logger.info("Removing File From Incoming Bucket: %s", self.file_key)
-            obj = s3.Object(self.bucket, self.file_key)
+            # obj = s3.Object(self.bucket, self.file_key)
             # obj.delete()
             logger.info("File Removed Successfully: %s", self.file_key)
             return True
 
-        except:
-            logger.error("Error when Moving File: %s", self.file_key)
-            return None
+        except BaseException as e:
+            logger.error("Error when Sorting File: %s", e)
 
     def _log_status_in_dynamo_db(self):
         """
@@ -104,8 +100,8 @@ class FileSorter:
             # self._copy_from_incoming_to_bucket("hermes-spani")
             logger.info("File Sorted Successfully: %s", self.file_key)
 
-        except:
-            logger.error("Error when Sorting File: %s", self.file_key)
+        except BaseException as e:
+            logger.error("Error when Sorting File: %s", e)
 
     def _sort_nemesis_file(self):
         """
@@ -117,8 +113,8 @@ class FileSorter:
             # self._copy_from_incoming_to_bucket("hermes-nemesis")
             logger.info("File Sorted Successfully: %s", self.file_key)
 
-        except:
-            logger.error("Error when Sorting File: %s", self.file_key)
+        except BaseException as e:
+            logger.error("Error when Sorting File: %s", e)
 
     def _sort_eea_file(self):
         """
@@ -130,8 +126,8 @@ class FileSorter:
             # self._copy_from_incoming_to_bucket("hermes-eea")
             logger.info("File Sorted Successfully: %s", self.file_key)
 
-        except:
-            logger.error("Error when Sorting File: %s", self.file_key)
+        except BaseException as e:
+            logger.error("Error when Sorting File: %s", e)
 
     def _sort_merit_file(self):
         """
@@ -143,5 +139,5 @@ class FileSorter:
             # self._copy_from_incoming_to_bucket("hermes-merit")
             logger.info("File Sorted Successfully: %s", self.file_key)
 
-        except:
-            logger.error("Error when Sorting File: %s", self.file_key)
+        except BaseException as e:
+            logger.error("Error when Sorting File: %s", e)
