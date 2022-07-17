@@ -1,4 +1,4 @@
-from aws_cdk import Stack, aws_lambda, aws_ecr
+from aws_cdk import Stack, aws_lambda
 from constructs import Construct
 import logging
 
