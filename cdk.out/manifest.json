@@ -1,0 +1,76 @@
+{
+  "version": "17.0.0",
+  "artifacts": {
+    "Tree": {
+      "type": "cdk:tree",
+      "properties": {
+        "file": "tree.json"
+      }
+    },
+    "SDCAWSProcessingLambdaStack.assets": {
+      "type": "cdk:asset-manifest",
+      "properties": {
+        "file": "SDCAWSProcessingLambdaStack.assets.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+      }
+    },
+    "SDCAWSProcessingLambdaStack": {
+      "type": "aws:cloudformation:stack",
+      "environment": "aws://351967858401/us-east-1",
+      "properties": {
+        "templateFile": "SDCAWSProcessingLambdaStack.template.json",
+        "validateOnSynth": false,
+        "assumeRoleArn": "arn:${AWS::Partition}:iam::351967858401:role/cdk-hnb659fds-deploy-role-351967858401-us-east-1",
+        "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::351967858401:role/cdk-hnb659fds-cfn-exec-role-351967858401-us-east-1",
+        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-351967858401-us-east-1/c60a90be68e435da09511586cd1e58294852358d58921a4954b84629c21f2455.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
+        "additionalDependencies": [
+          "SDCAWSProcessingLambdaStack.assets"
+        ],
+        "lookupRole": {
+          "arn": "arn:${AWS::Partition}:iam::351967858401:role/cdk-hnb659fds-lookup-role-351967858401-us-east-1",
+          "requiresBootstrapStackVersion": 8,
+          "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+        }
+      },
+      "dependencies": [
+        "SDCAWSProcessingLambdaStack.assets"
+      ],
+      "metadata": {
+        "/SDCAWSProcessingLambdaStack/sdc_aws_processing_function_function/ServiceRole/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "sdcawsprocessingfunctionfunctionServiceRole71595764"
+          }
+        ],
+        "/SDCAWSProcessingLambdaStack/sdc_aws_processing_function_function/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "sdcawsprocessingfunctionfunctionDE77634E"
+          }
+        ],
+        "/SDCAWSProcessingLambdaStack/CDKMetadata/Default": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CDKMetadata"
+          }
+        ],
+        "/SDCAWSProcessingLambdaStack/BootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "BootstrapVersion"
+          }
+        ],
+        "/SDCAWSProcessingLambdaStack/CheckBootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CheckBootstrapVersion"
+          }
+        ]
+      },
+      "displayName": "SDCAWSProcessingLambdaStack"
+    }
+  }
+}
