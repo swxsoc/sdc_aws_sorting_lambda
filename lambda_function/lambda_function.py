@@ -35,7 +35,7 @@ def handler(event, context):
     except BaseException as e:
         return {
             "statusCode": 500,
-            "body": json.dumps("Error Extracting Variables from Event: %s", e),
+            "body": json.dumps(f"Error Extracting Variables from Event: {e}"),
         }
 
 
