@@ -14,7 +14,7 @@ class SDCAWSSortingLambdaStack(Stack):
             handler="lambda_function.handler",
             runtime=aws_lambda.Runtime.PYTHON_3_9,
             memory_size=128,
-            function_name="aws_sdc_sorting_function",
+            function_name="aws_sdc_sorting_lambda_function",
             description=(
                 "SWSOC Processing Lambda function deployed using AWS CDK Python"
             ),
