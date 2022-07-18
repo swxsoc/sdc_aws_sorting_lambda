@@ -1,6 +1,7 @@
 # SWSOC File Sorting Lambda Function
 
-### **Base Image Used For Development Container:** https://github.com/HERMES-SOC/docker-lambda-base 
+| **CodeBuild Status** |![aws build status](https://codebuild.us-east-2.amazonaws.com/badges?uuid=eyJlbmNyeXB0ZWREYXRhIjoicHZ1QzFORFRUSlhYWmt1dk44VU9vZWd5MTBnNEpCWXNhekJXcEtKazlUM0FRVE5Ua3Jyc2h5clpkamN2TEhVZ0t0V205M1ZONC9VaVpycE1nc3VPVGJrPSIsIml2UGFyYW1ldGVyU3BlYyI6Ik5YOXdQMU1YNm9WdDRQOTEiLCJtYXRlcmlhbFNldFNlcmlhbCI6MX0%3D&branch=main)|
+|-|-|
 
 ### **Description**:
 This repository is to define the code to be used for the SWSOC file sorting Lambda function. This function will be deployed as a zip file to Lambda, with the production lambda being the latest release and the latest code on the master being used for development and testing. The production lambda will move files into the appropriate buckets while the development lambda will only move files with the prefix `dev_`. 
