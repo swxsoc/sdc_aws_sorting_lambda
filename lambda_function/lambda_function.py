@@ -24,8 +24,8 @@ def handler(event, context):
     """
     # Extract needed information from event
     try:
-        for s3_event in event['Records']:
-                
+        for s3_event in event["Records"]:
+
             s3_bucket = s3_event["s3"]["bucket"]
             s3_object = s3_event["s3"]["object"]
 
@@ -41,7 +41,7 @@ def handler(event, context):
             return response
 
     except KeyError:
-        
+
         return {
             "statusCode": 500,
             "body": json.dumps(f"Key Error Extracting Variables from Event"),

@@ -6,7 +6,7 @@ from lambda_function import handler
 if __name__ == "__main__":
     # Set Event to Lambda Handler With
     event = {
-    "Records": [
+        "Records": [
             {
                 "eventVersion": "2.1",
                 "eventSource": "aws:s3",
