@@ -23,6 +23,7 @@ def handler(event, context):
     environment.
     """
     # Extract needed information from event
+    print(event)
     try:
         file_key = event["FileKey"]
         environment = os.getenv("LAMBDA_ENVIRONMENT")
