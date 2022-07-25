@@ -78,7 +78,8 @@ class FileSorter:
             # Copy file to destination bucket
             self._copy_from_incoming_to_destination()
 
-            # Verify object exists in destination bucket before removing it from incoming (Unless Dry Run)
+            # Verify object exists in destination bucket
+            # before removing it from incoming (Unless Dry Run)
             if self._verify_object_exists(self.destination_bucket) or self.dry_run:
 
                 # Remove object from incoming bucket
@@ -172,7 +173,10 @@ class FileSorter:
                 s3.Object(self.incoming_bucket_name, self.file_key).delete()
 
             log.info(
-                f"File {self.file_key} Successfully Removed from {self.incoming_bucket_name}"
+                (
+                    f"File {self.file_key} Successfully Removed from"
+                    f"{self.incoming_bucket_name}"
+                )
             )
 
         except botocore.exceptions.ClientError as e:

@@ -29,7 +29,7 @@ def handler(event, context):
             print(s3_object)
 
             environment = os.getenv("LAMBDA_ENVIRONMENT")
-            if environment == None:
+            if environment is None:
                 environment = "DEVELOPMENT"
             # Pass required variables to sort function and returns a 200 (Successful)
             # / 500 (Error) HTTP response
@@ -41,7 +41,7 @@ def handler(event, context):
 
         return {
             "statusCode": 500,
-            "body": json.dumps(f"Key Error Extracting Variables from Event"),
+            "body": json.dumps("Key Error Extracting Variables from Event"),
         }
 
 
