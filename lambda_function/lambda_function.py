@@ -6,14 +6,10 @@ TODO: Skeleton Code for initial repo, logic still needs to be implemented
 and docstrings expanded
 """
 
-import logging
 import json
 import os
+from hermes_core import log
 from file_sorter.file_sorter import FileSorter
-
-logger = logging.getLogger()
-# Debug used for development
-logger.setLevel(logging.DEBUG)
 
 
 def handler(event, context):
@@ -32,8 +28,9 @@ def handler(event, context):
             print(s3_bucket)
             print(s3_object)
 
-            # environment = os.getenv("LAMBDA_ENVIRONMENT")
-            environment = "PRODUCTION"
+            environment = os.getenv("LAMBDA_ENVIRONMENT")
+            if environment == None:
+                environment = "DEVELOPMENT"
             # Pass required variables to sort function and returns a 200 (Successful)
             # / 500 (Error) HTTP response
             response = sort_file(environment, s3_bucket, s3_object)
@@ -55,33 +52,19 @@ def sort_file(environment, s3_bucket, s3_object):
     """
 
     # Production (Official Release) Environment / Local Development
-    if environment == "PRODUCTION":
-        try:
-            logger.info("Initializing FileSorter - Environment: Production")
-            sorter = FileSorter(s3_bucket=s3_bucket, s3_object=s3_object)
-            logger.warning("FileSorter Initialized Successfully")
+    try:
+        log.info(f"Initializing FileSorter - Environment: {environment}")
 
-            return {"statusCode": 200, "body": json.dumps("File Sorted Successfully")}
+        if environment == "PRODUCTION":
+            FileSorter(s3_bucket=s3_bucket, s3_object=s3_object)
+        else:
+            FileSorter(s3_bucket=s3_bucket, s3_object=s3_object, dry_run=True)
 
-        except BaseException as e:
-            logger.error("Error occurred with FileSorter: %s", e)
+        log.info("File Sorted Successfully")
 
-            return {"statusCode": 500, "body": json.dumps("Error Sorting File")}
+        return {"statusCode": 200, "body": json.dumps("File Sorted Successfully")}
 
-    # Development (Master Branch but not Official Release) Environment
-    elif environment == "DEVELOPMENT":
-        try:
-            logger.info("Initializing FileSorter - Environment: Development")
-            sorter = FileSorter(s3_bucket=s3_bucket, s3_object=s3_object, dry_run=True)
-            logger.warning("FileSorter Initialized Successfully")
-            sorter.sort_file()
+    except BaseException as e:
+        log.error("Error occurred with FileSorter: %s", e)
 
-            return {"statusCode": 200, "body": json.dumps("File Sorted Successfully")}
-
-        except BaseException as e:
-            logger.error("Error occurred with FileSorter: %s", e)
-
-            return {"statusCode": 500, "body": json.dumps("Error Sorting File")}
-
-    else:
-        return {"statusCode": 500, "body": json.dumps("Invalid key for environment")}
+        return {"statusCode": 500, "body": json.dumps("Error Sorting File")}

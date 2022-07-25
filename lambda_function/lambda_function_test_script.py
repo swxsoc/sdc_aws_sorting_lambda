@@ -28,7 +28,7 @@ if __name__ == "__main__":
                         "arn": "arn:aws:s3:::swsoc-incoming",
                     },
                     "object": {
-                        "key": "hermes_spn_2s_l3test_burst_20240406_120621_v2.4.5",
+                        "key": "hermes_spn_2s_l3test_burst_20240406_120621_v2.4",
                         "size": 68221,
                         "eTag": "32d82e8a2e72af004c557c4e369e89ff",
                         "sequencer": "0062DE63CC330B223E",

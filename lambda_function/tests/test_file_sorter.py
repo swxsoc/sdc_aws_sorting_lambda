@@ -10,8 +10,13 @@ def test_initializing_class():
     """
     Test function that tests if class initializes correctly if passed correct variables.
     """
-    test_file_key = "/dev_merit_file.txt"
 
-    test_sorter = FileSorter(test_file_key)
+    test_s3_bucket = {"name": "test_bucket"}
+    test_file_key = {
+        "key": "hermes_spn_2s_l3test_burst_20240406_120621_v2.4",
+        "eTag": "12345678",
+    }
+
+    test_sorter = FileSorter(test_s3_bucket, test_file_key, dry_run=True)
 
     assert test_sorter is not None

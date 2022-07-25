@@ -26,6 +26,7 @@ class SDCAWSSortingLambdaStack(Stack):
             description=(
                 "SWSOC Processing Lambda function deployed using AWS CDK Python"
             ),
+            environment={"LAMBDA_ENVIRONMENT": "PRODUCTION"},
             code=aws_lambda.AssetCode("lambda_function/"),
         )
 
