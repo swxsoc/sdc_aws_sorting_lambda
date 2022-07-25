@@ -6,7 +6,7 @@ TODO: Skeleton Code for initial repo, class still needs to be implemented includ
 logging to DynamoDB + S3 log file and docstrings expanded
 """
 
-from hermes_core import log
+import logging as log
 from hermes_core.util import util
 import boto3
 import botocore

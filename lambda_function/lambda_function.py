@@ -8,7 +8,7 @@ and docstrings expanded
 
 import json
 import os
-from hermes_core import log
+import logging as log
 from file_sorter.file_sorter import FileSorter
 
 
