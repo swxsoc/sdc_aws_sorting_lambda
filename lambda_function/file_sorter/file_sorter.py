@@ -5,16 +5,14 @@ HERMES instrument folder.
 TODO: Skeleton Code for initial repo, class still needs to be implemented including
 logging to DynamoDB + S3 log file and docstrings expanded
 """
-
-import logging as log
 import os
-from hermes_core.util import util
-
-os.chdir("/tmp")
+import logging as log
 import boto3
 import botocore
+from hermes_core.util import util
 
 session = boto3.Session()
+os.chdir("/tmp")
 
 # Dict with instrument bucket names
 INSTRUMENT_BUCKET_NAMES = {
