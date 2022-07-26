@@ -11,7 +11,10 @@ import boto3
 import botocore
 from hermes_core.util import util
 
+# Starts boto3 session so it gets access to needed credentials
 session = boto3.Session()
+
+# This is so the hermes.log file writes to the correct location
 os.chdir("/tmp")
 
 # Dict with instrument bucket names
