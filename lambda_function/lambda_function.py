@@ -14,7 +14,7 @@ os.chdir("/tmp")
 
 # The below flake exceptions are to avoid the hermes.log writing
 # issue the above line solves
-from hermes_core import log  # noqa: E402
+from logging import log  # noqa: E402
 from file_sorter.file_sorter import FileSorter  # noqa: E402
 
 # This is so the hermes.log file writes to the correct location
