@@ -9,7 +9,8 @@ logging to DynamoDB + S3 log file and docstrings expanded
 import logging as log
 import os
 from hermes_core.util import util
-os.chdir('/tmp')
+
+os.chdir("/tmp")
 import boto3
 import botocore
 
