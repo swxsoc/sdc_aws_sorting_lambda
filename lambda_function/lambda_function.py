@@ -8,7 +8,7 @@ and docstrings expanded
 
 import json
 import os
-import logging as log
+from logging import log
 from file_sorter.file_sorter import FileSorter
 
 
