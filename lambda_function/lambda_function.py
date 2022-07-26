@@ -8,8 +8,16 @@ and docstrings expanded
 
 import json
 import os
-from logging import log
-from file_sorter.file_sorter import FileSorter
+
+# This is so the hermes.log file writes to the lambda tmp directory to avoid errors
+os.chdir("/tmp")
+
+# The below flake exceptions are to avoid the hermes.log writing
+# issue the above line solves
+from hermes_core import log  # noqa: E402
+from file_sorter.file_sorter import FileSorter  # noqa: E402
+
+# This is so the hermes.log file writes to the correct location
 
 
 def handler(event, context):

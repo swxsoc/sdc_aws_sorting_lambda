@@ -12,7 +12,7 @@ phases:
       - echo Lint with Black
       - black --check --diff app.py lambda_function cdk_deployment
       - echo Lint with Flake
-      - flake8 --count --max-line-length 88 app.py lambda_function cdk_deployment
+      - flake8 --count --max-line-length 88 app.py cdk_deployment lambda_function --exclude lambda_function_test_script.py
       - echo Perform Unit Testing
       - pytest --pyargs lambda_function --cov lambda_function
       - cdk synth
