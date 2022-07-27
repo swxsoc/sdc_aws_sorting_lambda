@@ -35,9 +35,6 @@ def handler(event, context):
             s3_bucket = s3_event["s3"]["bucket"]
             s3_object = s3_event["s3"]["object"]
 
-            print(s3_bucket)
-            print(s3_object)
-
             environment = os.getenv("LAMBDA_ENVIRONMENT")
             if environment is None:
                 environment = "DEVELOPMENT"

@@ -8,6 +8,7 @@ logging to DynamoDB + S3 log file and docstrings expanded
 import os
 import boto3
 import botocore
+import tempfile
 
 # This is so the hermes.log file writes to the lambda tmp directory to avoid errors
 os.chdir("/tmp")
@@ -101,9 +102,12 @@ class FileSorter:
         Returns bucket in which the file will be sorted to
         """
         try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                os.chdir(tmpdir)
+                from hermes_core import util
 
-            # science_file = util.parse_science_filename(self.file_key)
-            # destination_bucket = INSTRUMENT_BUCKET_NAMES[science_file["instrument"]]
+                science_file = util.parse_science_filename(self.file_key)
+                destination_bucket = INSTRUMENT_BUCKET_NAMES[science_file["instrument"]]
             destination_bucket = "spani"
             log.info(f"Destination Bucket Parsed Successfully: {destination_bucket}")
 
