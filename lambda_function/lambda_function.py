@@ -9,8 +9,6 @@ and docstrings expanded
 import json
 import os
 
-# This is so the hermes.log file writes to the lambda tmp directory to avoid errors
-os.chdir("/tmp")
 
 # The below flake exceptions are to avoid the hermes.log writing
 # issue the above line solves

@@ -8,7 +8,6 @@ logging to DynamoDB + S3 log file and docstrings expanded
 import os
 import boto3
 import botocore
-import tempfile
 
 # This is so the hermes.log file writes to the lambda tmp directory to avoid errors
 os.chdir("/tmp")
