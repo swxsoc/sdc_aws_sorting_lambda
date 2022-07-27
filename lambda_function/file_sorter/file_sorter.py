@@ -104,9 +104,12 @@ class FileSorter:
         try:
             with tempfile.TemporaryDirectory() as tmpdir:
                 os.chdir(tmpdir)
-                from hermes_core import util
+                from hermes_core.util import util
 
+                os.chdir(tmpdir)
                 science_file = util.parse_science_filename(self.file_key)
+                os.chdir(tmpdir)
+
                 destination_bucket = INSTRUMENT_BUCKET_NAMES[science_file["instrument"]]
             destination_bucket = "spani"
             log.info(f"Destination Bucket Parsed Successfully: {destination_bucket}")
