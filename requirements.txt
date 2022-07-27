@@ -1,1 +1,1 @@
-hermes_core @ git+https://github.com/HERMES-SOC/hermes_core.git
+hermes_core @ git+https://github.com/dbarrous/hermes_core.git@fix-log-config

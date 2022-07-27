@@ -16,6 +16,7 @@ os.chdir("/tmp")
 # The below flake exceptions are to avoid the hermes.log writing
 # issue the above line solves
 import logging as log  # noqa: E402
+from hermes_core.util import util  # noqa: E402
 
 log.basicConfig(level=log.INFO)  # noqa: E402
 # Starts boto3 session so it gets access to needed credentials
@@ -102,15 +103,10 @@ class FileSorter:
         Returns bucket in which the file will be sorted to
         """
         try:
-            with tempfile.TemporaryDirectory() as tmpdir:
-                os.chdir(tmpdir)
-                from hermes_core.util import util
 
-                os.chdir(tmpdir)
-                science_file = util.parse_science_filename(self.file_key)
-                os.chdir(tmpdir)
+            science_file = util.parse_science_filename(self.file_key)
 
-                destination_bucket = INSTRUMENT_BUCKET_NAMES[science_file["instrument"]]
+            destination_bucket = INSTRUMENT_BUCKET_NAMES[science_file["instrument"]]
             destination_bucket = "spani"
             log.info(f"Destination Bucket Parsed Successfully: {destination_bucket}")
 
