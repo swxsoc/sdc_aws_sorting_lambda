@@ -14,9 +14,10 @@ os.chdir("/tmp")
 
 # The below flake exceptions are to avoid the hermes.log writing
 # issue the above line solves
-from logging import log  # noqa: E402
+import logging as log  # noqa: E402
 from hermes_core.util import util  # noqa: E402
 
+log.basicConfig(level=log.INFO)  # noqa: E402
 # Starts boto3 session so it gets access to needed credentials
 session = boto3.Session()
 
