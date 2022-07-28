@@ -5,23 +5,18 @@ HERMES instrument folder.
 TODO: Skeleton Code for initial repo, class still needs to be implemented including
 logging to DynamoDB + S3 log file and docstrings expanded
 """
-import os
 import boto3
 import botocore
 
-# This is so the hermes.log file writes to the lambda tmp directory to avoid errors
-os.chdir("/tmp")
-
 # The below flake exceptions are to avoid the hermes.log writing
 # issue the above line solves
-import logging as log  # noqa: E402
+from hermes_core import log  # noqa: E402
 from hermes_core.util import util  # noqa: E402
 
-log.basicConfig(level=log.INFO)  # noqa: E402
 # Starts boto3 session so it gets access to needed credentials
 session = boto3.Session()
 
-
+print(util)
 # Dict with instrument bucket names
 INSTRUMENT_BUCKET_NAMES = {
     "eea": "hermes-eea",
