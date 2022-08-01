@@ -20,7 +20,7 @@ print(util)
 # Dict with instrument bucket names
 INSTRUMENT_BUCKET_NAMES = {
     "eea": "hermes-eea",
-    "nemesis": "hermes-nemisis",
+    "nemisis": "hermes-nemisis",
     "merit": "hermes-merit",
     "spani": "hermes-spani",
 }
