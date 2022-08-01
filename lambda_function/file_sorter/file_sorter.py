@@ -16,7 +16,6 @@ from hermes_core.util import util  # noqa: E402
 # Starts boto3 session so it gets access to needed credentials
 session = boto3.Session()
 
-print(util)
 # Dict with instrument bucket names
 INSTRUMENT_BUCKET_NAMES = {
     "eea": "hermes-eea",
