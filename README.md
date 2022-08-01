@@ -1,6 +1,6 @@
 # SWSOC File Sorting Lambda Function
 
-| **CodeBuild Status** |![aws build status](https://codebuild.us-east-2.amazonaws.com/badges?uuid=eyJlbmNyeXB0ZWREYXRhIjoicHZ1QzFORFRUSlhYWmt1dk44VU9vZWd5MTBnNEpCWXNhekJXcEtKazlUM0FRVE5Ua3Jyc2h5clpkamN2TEhVZ0t0V205M1ZONC9VaVpycE1nc3VPVGJrPSIsIml2UGFyYW1ldGVyU3BlYyI6Ik5YOXdQMU1YNm9WdDRQOTEiLCJtYXRlcmlhbFNldFNlcmlhbCI6MX0%3D&branch=main)|
+| **CodeBuild Status** |![aws build status](https://codebuild.us-east-2.amazonaws.com/badges?uuid=eyJlbmNyeXB0ZWREYXRhIjoiWmRsTTlicGk1cHBoNFc4bit6bVF1MlcvN216TzUyaVJNNjVJamNVanhYU1d4UitrWnJvaUpldWdxdGkyUm5nclhMa2E5QWtTeHZxcTJHY2VheGNUZnk0PSIsIml2UGFyYW1ldGVyU3BlYyI6Ik9DMEhCUDVQOExJekdVVFAiLCJtYXRlcmlhbFNldFNlcmlhbCI6MX0%3D&branch=main)|
 |-|-|
 
 ### **Description**:
