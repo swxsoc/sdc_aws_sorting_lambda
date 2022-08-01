@@ -181,7 +181,7 @@ class FileSorter:
             log.info(
                 (
                     f"File {self.file_key} Successfully Removed from"
-                    f"{self.incoming_bucket_name}"
+                    f" {self.incoming_bucket_name}"
                 )
             )
 
