@@ -101,7 +101,6 @@ class FileSorter:
             science_file = util.parse_science_filename(self.file_key)
 
             destination_bucket = INSTRUMENT_BUCKET_NAMES[science_file["instrument"]]
-            destination_bucket = "spani"
             log.info(f"Destination Bucket Parsed Successfully: {destination_bucket}")
 
             return destination_bucket
