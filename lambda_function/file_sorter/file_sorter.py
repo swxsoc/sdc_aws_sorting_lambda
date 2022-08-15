@@ -78,8 +78,14 @@ class FileSorter:
             # Dict of parsed science file
             self.destination_bucket = self._get_destination_bucket()
 
-            # Copy file to destination bucket
-            self._copy_from_incoming_to_destination()
+            if not self._verify_object_exists(self.destination_bucket):
+                # Copy file to destination bucket
+                self._copy_from_incoming_to_destination()
+            else:
+                # Add to unsorted if object already exists in destination bucket
+                self.destination_bucket = self.incoming_bucket_name
+                self.file_key = f"/unsorted/{self.file_key}"
+                self._copy_from_incoming_to_destination()
 
             # Verify object exists in destination bucket
             # before removing it from incoming (Unless Dry Run)
