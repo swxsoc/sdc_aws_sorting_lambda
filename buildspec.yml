@@ -51,8 +51,8 @@ phases:
       - echo Pushing to S3...
       - aws s3 cp $NAME.zip s3://swsoc-sorting-lambda/
       - echo ________________________________
-
-  post_build:
-    commands:
+      
+      - echo Updating Deployment
+      - aws codebuild start-build --project-name build_sdc_aws_sorting_lambda --region us-east-2 --environment-variables-override name=LAMBDA_PIPELINE,value=SORTING,type=PLAINTEXT
       - echo Build Successful - Lambda Successfully Zipped and Pushed to S3
   
