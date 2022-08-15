@@ -53,6 +53,6 @@ phases:
       - echo ________________________________
       
       - echo Updating Deployment
-      - aws codebuild start-build --project-name build_sdc_aws_sorting_lambda --region us-east-2 --environment-variables-override name=LAMBDA_PIPELINE,value=SORTING,type=PLAINTEXT
+      - aws codebuild start-build --project-name build_sdc_aws_pipeline_architecture --region us-east-2 --environment-variables-override name=LAMBDA_PIPELINE,value=SORTING,type=PLAINTEXT
       - echo Build Successful - Lambda Successfully Zipped and Pushed to S3
   
