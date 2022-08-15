@@ -3,28 +3,56 @@ version: 0.2
 phases:
   pre_build:
     commands:
-      - echo Install CI/CD Dependencies
+      - echo Installing CI/CD Dependencies...
       - pip3 install flake8 black pytest pytest-astropy pytest-cov
       - pip3 install pytest pytest-astropy pytest-cov
-      - pip3 install git+https://github.com/dbarrous/hermes_core.git
-      - apt-get install zip -y 
-      - echo Lint with Black
+      - pip3 install -r requirements.txt
+      - echo ________________________________
+
+      - echo Linting with Black...
       - black --check --diff lambda_function
-      - echo Lint with Flake
-      - flake8 --count --max-line-length 88 app.py lambda_function --exclude lambda_function_test_script.py
-      - echo Perform Pytest Unit Testing
+      - echo ________________________________
+      
+      - echo Linting with Flake...
+      - flake8 --count --max-line-length 88 lambda_function --exclude lambda_function_test_script.py
+      - echo ________________________________
+      
+      - echo Performing Pytest Unit Testing...
       - pytest --pyargs lambda_function --cov lambda_function
+      - echo ________________________________
     
   build:
     commands:
-      - echo Build started on `date`
-      - echo Installing requirements...
+      - echo Creating Zip Name...
+      - |
+        echo "Git Release Tag Script"
+        
+        TRIGGER=$CODEBUILD_WEBHOOK_TRIGGER
+        NAME=dev_sorting_function_$(date +%s)
+        
+        if [[ $TRIGGER == *"tag/"* ]];then
+          TAG=${TRIGGER:4}
+          echo "Production Build, tagging with: $TAG"
+          NAME=$(printenv TAG)_sorting_function_$(date +%s)
+        fi
+        
+        export NAME
+      - echo ________________________________
+      
+      - echo Installing requirements to Lambda Function...
       - pip3 install -r requirements.txt -t lambda_function
+      - echo ________________________________
+      
       - echo Zipping Lambda Function...
-      - zip -r lambda_function.zip lambda_function
+      - cd lambda_function
+      - zip -r $NAME.zip .
+      - echo ________________________________
+      
       - echo Pushing to S3...
-      - aws s3 cp lambda_function.zip s3://swsoc-sorting-lambda
+      - aws s3 cp $NAME.zip s3://swsoc-sorting-lambda/
+      - echo ________________________________
 
   post_build:
     commands:
-      - echo Build completed on `date`
+      - echo Build Successful - Lambda Successfully Zipped and Pushed to S3
+  
