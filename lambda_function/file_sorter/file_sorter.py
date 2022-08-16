@@ -89,7 +89,7 @@ class FileSorter:
             else:
                 # Add to unsorted if object already exists in destination bucket
                 self.destination_bucket = UNSORTED_BUCKET_NAME
-                new_key = (
+                self.file_key = (
                     f"{self.file_key}_"
                     f"{datetime.datetime.utcnow().strftime('%Y-%m-%d-%H%MZ')}"
                 )
@@ -97,8 +97,10 @@ class FileSorter:
                     "File already exists in destination bucket,"
                     "moving to unsorted bucket"
                 )
-                self._copy_from_incoming_to_destination(new_key)
+                # Copy file to unsorted bucket
+                self._copy_from_incoming_to_destination()
 
+                # remove file from incoming bucket
                 self._remove_object_from_incoming()
 
             # Verify object exists in destination bucket
@@ -158,7 +160,7 @@ class FileSorter:
 
             return False
 
-    def _copy_from_incoming_to_destination(self, new_key=None):
+    def _copy_from_incoming_to_destination(self):
 
         """
         Function to copy file from S3 incoming bucket using bucket key
@@ -175,12 +177,8 @@ class FileSorter:
 
             # Copy S3 file from incoming bucket to destination bucket
             if not self.dry_run:
-                if new_key:
-                    bucket = s3.Bucket(UNSORTED_BUCKET_NAME)
-                    bucket.copy(copy_source, new_key)
-                else:
-                    bucket = s3.Bucket(self.destination_bucket)
-                    bucket.copy(copy_source, self.file_key)
+                bucket = s3.Bucket(self.destination_bucket)
+                bucket.copy(copy_source, self.file_key)
             log.info(
                 f"File {self.file_key} Successfully Moved to {self.destination_bucket}"
             )
