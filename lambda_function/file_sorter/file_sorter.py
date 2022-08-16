@@ -25,6 +25,8 @@ INSTRUMENT_BUCKET_NAMES = {
     "spani": "hermes-spani",
 }
 
+UNSORTED_BUCKET_NAME = "swsoc-unsorted"
+
 
 class FileSorter:
     """
@@ -86,7 +88,7 @@ class FileSorter:
                 self._copy_from_incoming_to_destination()
             else:
                 # Add to unsorted if object already exists in destination bucket
-                self.destination_bucket = self.incoming_bucket_name
+                self.destination_bucket = UNSORTED_BUCKET_NAME
                 new_key = (
                     f"{self.file_key}_"
                     f"{datetime.datetime.utcnow().strftime('%Y-%m-%d-%H%MZ')}"
