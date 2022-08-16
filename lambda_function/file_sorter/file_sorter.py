@@ -87,7 +87,10 @@ class FileSorter:
             else:
                 # Add to unsorted if object already exists in destination bucket
                 self.destination_bucket = self.incoming_bucket_name
-                new_key = f'{self.file_key}_{datetime.datetime.utcnow().strftime("%Y-%m-%d-%H%MZ")}'
+                new_key = (
+                    f"{self.file_key}_"
+                    f"{datetime.datetime.utcnow().strftime('%Y-%m-%d-%H%MZ')}"
+                )
                 log.error(
                     "File already exists in destination bucket,"
                     "moving to unsorted in incoming bucket"
