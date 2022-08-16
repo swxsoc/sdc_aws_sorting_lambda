@@ -86,12 +86,12 @@ class FileSorter:
             else:
                 # Add to unsorted if object already exists in destination bucket
                 self.destination_bucket = self.incoming_bucket_name
-                self.file_key = f"unsorted/{self.file_key}"
+                new_key = f"unsorted/{self.file_key}"
                 log.error(
                     "File already exists in destination bucket,"
                     "moving to unsorted in incoming bucket"
                 )
-                self._copy_from_incoming_to_destination()
+                self._copy_from_incoming_to_destination(new_key)
 
             # Verify object exists in destination bucket
             # before removing it from incoming (Unless Dry Run)
@@ -150,7 +150,7 @@ class FileSorter:
 
             return False
 
-    def _copy_from_incoming_to_destination(self):
+    def _copy_from_incoming_to_destination(self, new_key=None):
 
         """
         Function to copy file from S3 incoming bucket using bucket key
@@ -164,6 +164,9 @@ class FileSorter:
             # Initialize S3 Client and Copy Source Dict
             s3 = boto3.resource("s3")
             copy_source = {"Bucket": self.incoming_bucket_name, "Key": self.file_key}
+
+            # If new_key is specified, copy to new key in destination bucket
+            self.file_key = new_key if new_key else self.file_key
 
             # Copy S3 file from incoming bucket to destination bucket
             if not self.dry_run:
