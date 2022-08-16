@@ -173,7 +173,9 @@ class FileSorter:
                 if new_key:
                     s3.meta.client.copy(copy_source, self.destination_bucket, new_key)
                 else:
-                    s3.meta.client.copy(copy_source, self.destination_bucket, self.file_key)
+                    s3.meta.client.copy(
+                        copy_source, self.destination_bucket, self.file_key
+                    )
             log.info(
                 f"File {self.file_key} Successfully Moved to {self.destination_bucket}"
             )
