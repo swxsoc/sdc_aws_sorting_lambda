@@ -164,7 +164,7 @@ class FileSorter:
             # Initialize S3 Client and Copy Source Dict
             s3 = boto3.resource("s3")
             copy_source = {"Bucket": self.incoming_bucket_name, "Key": self.file_key}
-            bucket.copy(copy_source, "otherkey")
+
             # If new_key is specified, copy to new key in destination bucket
             self.file_key = new_key if new_key else self.file_key
 
