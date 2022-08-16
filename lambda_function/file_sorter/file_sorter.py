@@ -95,7 +95,7 @@ class FileSorter:
                 )
                 log.error(
                     "File already exists in destination bucket,"
-                    "moving to unsorted in incoming bucket"
+                    "moving to unsorted bucket"
                 )
                 self._copy_from_incoming_to_destination(new_key)
 
@@ -174,7 +174,7 @@ class FileSorter:
             # Copy S3 file from incoming bucket to destination bucket
             if not self.dry_run:
                 if new_key:
-                    bucket = s3.Bucket(self.unsorted_bucket)
+                    bucket = s3.Bucket(UNSORTED_BUCKET_NAME)
                     bucket.copy(copy_source, new_key)
                 else:
                     bucket = s3.Bucket(self.destination_bucket)
