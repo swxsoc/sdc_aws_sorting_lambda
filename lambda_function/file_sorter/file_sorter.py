@@ -78,13 +78,19 @@ class FileSorter:
             # Dict of parsed science file
             self.destination_bucket = self._get_destination_bucket()
 
-            if not self._verify_object_exists(self.destination_bucket):
+            if not self._verify_object_exists(
+                self.destination_bucket, check_etag=False
+            ):
                 # Copy file to destination bucket
                 self._copy_from_incoming_to_destination()
             else:
                 # Add to unsorted if object already exists in destination bucket
                 self.destination_bucket = self.incoming_bucket_name
-                self.file_key = f"/unsorted/{self.file_key}"
+                self.file_key = f"unsorted/{self.file_key}"
+                log.error(
+                    "File already exists in destination bucket,"
+                    "moving to unsorted in incoming bucket"
+                )
                 self._copy_from_incoming_to_destination()
 
             # Verify object exists in destination bucket
@@ -115,7 +121,7 @@ class FileSorter:
 
             raise ValueError(e)
 
-    def _verify_object_exists(self, bucket):
+    def _verify_object_exists(self, bucket, check_etag=True):
         """
         Returns wether or not the file exists in the specified bucket
         """
@@ -123,14 +129,17 @@ class FileSorter:
             s3 = boto3.resource("s3")
             s3_bucket_object = s3.ObjectSummary(bucket, self.file_key)
 
-            # Checks to see that both the file key and etags are the same
-            if (
-                s3_bucket_object.key == self.file_key
-                and s3_bucket_object.e_tag == self.file_etag
-            ):
-                log.info(f"File {self.file_key} exists in Bucket {bucket}")
-
-                return True
+            # Checks to see that both the file key the same
+            if s3_bucket_object.key == self.file_key:
+                # Checks to see if the file eTag is the same if check_etag is True
+                if check_etag:
+                    if s3_bucket_object.e_tag == self.file_etag:
+                        log.info(f"File {self.file_key} exists in Bucket {bucket}")
+                        return True
+                    else:
+                        return False
+                else:
+                    return True
             else:
                 log.info(f"File {self.file_key} does not exist in Bucket {bucket}")
 
