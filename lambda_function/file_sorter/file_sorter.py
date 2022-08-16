@@ -7,6 +7,7 @@ logging to DynamoDB + S3 log file and docstrings expanded
 """
 import boto3
 import botocore
+import datetime
 
 # The below flake exceptions are to avoid the hermes.log writing
 # issue the above line solves
@@ -86,7 +87,7 @@ class FileSorter:
             else:
                 # Add to unsorted if object already exists in destination bucket
                 self.destination_bucket = self.incoming_bucket_name
-                new_key = f"unsorted/{self.file_key}"
+                new_key = f'{self.file_key}_{datetime.datetime.utcnow().strftime("%Y-%m-%d-%H%MZ")}'
                 log.error(
                     "File already exists in destination bucket,"
                     "moving to unsorted in incoming bucket"
@@ -165,13 +166,10 @@ class FileSorter:
             s3 = boto3.resource("s3")
             copy_source = {"Bucket": self.incoming_bucket_name, "Key": self.file_key}
 
-            # If new_key is specified, copy to new key in destination bucket
-            self.file_key = new_key if new_key else self.file_key
-
             # Copy S3 file from incoming bucket to destination bucket
             if not self.dry_run:
                 if new_key:
-                    bucket = s3.Bucket(self.destination_bucket)
+                    bucket = s3.Bucket(self.unsorted_bucket)
                     bucket.copy(copy_source, new_key)
                 else:
                     bucket = s3.Bucket(self.destination_bucket)
