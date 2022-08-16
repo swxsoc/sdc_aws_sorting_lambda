@@ -170,7 +170,10 @@ class FileSorter:
 
             # Copy S3 file from incoming bucket to destination bucket
             if not self.dry_run:
-                s3.meta.client.copy(copy_source, self.destination_bucket, self.file_key)
+                if new_key:
+                    s3.meta.client.copy(copy_source, self.destination_bucket, new_key)
+                else:
+                    s3.meta.client.copy(copy_source, self.destination_bucket, self.file_key)
             log.info(
                 f"File {self.file_key} Successfully Moved to {self.destination_bucket}"
             )
