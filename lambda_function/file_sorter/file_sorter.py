@@ -99,6 +99,8 @@ class FileSorter:
                 )
                 self._copy_from_incoming_to_destination(new_key)
 
+                self._remove_object_from_incoming()
+
             # Verify object exists in destination bucket
             # before removing it from incoming (Unless Dry Run)
             if self._verify_object_exists(self.destination_bucket) or self.dry_run:
