@@ -104,7 +104,7 @@ class FileSorter:
 
             # Verify object does not exist in destination bucket
             if not self._verify_object_exists(
-                bucket=destination_bucket, file_key=self.file_key, etag=self.file_etag
+                bucket=destination_bucket, file_key=self.file_key
             ):
                 # Copy file to destination bucket
                 self._copy_from_source_to_destination(
