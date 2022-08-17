@@ -106,7 +106,7 @@ class FileSorter:
             else:
                 # Add to unsorted if object already exists in destination bucket
                 new_file_key = (
-                    f"{self.file_key}_"
+                    f"duplicate_file_with_attempted_timestamps:{self.file_key}_"
                     f"{datetime.datetime.utcnow().strftime('%Y-%m-%d-%H%MZ')}"
                 )
 
