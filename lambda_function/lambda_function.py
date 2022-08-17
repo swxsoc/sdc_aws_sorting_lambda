@@ -59,7 +59,7 @@ def sort_file(environment, s3_bucket, s3_object):
         log.info(f"Initializing FileSorter - Environment: {environment}")
 
         if environment == "PRODUCTION":
-            FileSorter(s3_bucket=s3_bucket, s3_object=s3_object)
+            FileSorter(s3_bucket=s3_bucket, s3_object=s3_object, environment=environment)
         else:
             FileSorter(
                 s3_bucket=s3_bucket, s3_object=s3_object, environment=environment
