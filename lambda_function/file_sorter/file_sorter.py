@@ -58,13 +58,15 @@ class FileSorter:
             log.info(
                 {
                     "status": "INFO",
-                    "message": f"Incoming Object Name Parsed Successfully: {self.file_key}",
+                    "message": "Incoming Object Name"
+                    f"Parsed Successfully: {self.file_key}",
                 }
             )
             log.info(
                 {
                     "status": "INFO",
-                    "message": f"Incoming Object eTag Parsed Successfully: {self.file_etag}",
+                    "message": "Incoming Object eTag"
+                    f"Parsed Successfully: {self.file_etag}",
                 }
             )
 
@@ -119,7 +121,8 @@ class FileSorter:
                 log.error(
                     {
                         "status": "ERROR",
-                        "message": f"File {self.file_key} already exists in {self.destination_bucket}",
+                        "message": f"File {self.file_key}"
+                        f"already exists in {self.destination_bucket}",
                     }
                 )
                 # Copy file to unsorted bucket
