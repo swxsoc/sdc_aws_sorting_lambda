@@ -164,6 +164,25 @@ class FileSorter:
         except ValueError as e:
             log.error({"status": "ERROR", "message": e})
 
+            # Add to unsorted if object already exists in destination bucket
+            new_file_key = (
+                f"invalid_file_with_attempted_timestamps/{self.file_key}_"
+                f"{datetime.datetime.utcnow().strftime('%Y-%m-%d-%H%MZ')}"
+            )
+
+            # Copy file to unsorted bucket
+            self._copy_from_source_to_destination(
+                source_bucket=self.incoming_bucket_name,
+                file_key=self.file_key,
+                new_file_key=new_file_key,
+                destination_bucket=UNSORTED_BUCKET_NAME,
+            )
+
+            # remove file from incoming bucket
+            self._remove_object_from_bucket(
+                bucket=self.incoming_bucket_name, file_key=self.file_key
+            )
+
             raise ValueError(e)
 
     def _does_object_exists(self, bucket, file_key):
