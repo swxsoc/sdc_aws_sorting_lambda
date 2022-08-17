@@ -17,9 +17,7 @@ phases:
       - flake8 --count --max-line-length 88 lambda_function --exclude lambda_function_test_script.py
       - echo ________________________________
       
-      - echo Performing Pytest Unit Testing...
-      - pytest --pyargs lambda_function --cov lambda_function
-      - echo ________________________________
+
     
   build:
     commands:
