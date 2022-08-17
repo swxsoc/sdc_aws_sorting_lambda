@@ -34,7 +34,7 @@ class FileSorter:
     bucket event which triggered the lambda function to be called.
     """
 
-    def __init__(self, s3_bucket, s3_object, dry_run=False):
+    def __init__(self, s3_bucket, s3_object, environment, dry_run=False):
         """
         FileSorter Constructorlogger
         """
@@ -53,7 +53,6 @@ class FileSorter:
 
         try:
             self.file_key = s3_object["key"]
-            self.file_etag = f'"{s3_object["eTag"]}"'
 
             log.info(
                 {
@@ -62,18 +61,14 @@ class FileSorter:
                     f"Parsed Successfully: {self.file_key}",
                 }
             )
-            log.info(
-                {
-                    "status": "INFO",
-                    "message": "Incoming Object eTag"
-                    f"Parsed Successfully: {self.file_etag}",
-                }
-            )
 
         except KeyError:
             error_message = "KeyError when extracting S3 Object Name/eTag from dict"
             log.error({"status": "ERROR", "message": error_message})
             raise KeyError(error_message)
+
+        # Variable that determines environment
+        self.environment = environment
 
         # Variable that determines if FileSorter performs a Dry Run
         self.dry_run = dry_run
@@ -89,21 +84,17 @@ class FileSorter:
         """
         # Verify object exists in incoming bucket
         if (
-            self._verify_object_exists(
-                bucket=self.incoming_bucket_name,
-                file_key=self.file_key,
-                etag=self.file_etag,
+            self._does_object_exists(
+                bucket=self.incoming_bucket_name, file_key=self.file_key
             )
             or self.dry_run
         ):
 
             # Dict of parsed science file
-            destination_bucket = self._get_destination_bucket(
-                file_key=self.file_key
-            )
+            destination_bucket = self._get_destination_bucket(file_key=self.file_key)
 
             # Verify object does not exist in destination bucket
-            if not self._verify_object_exists(
+            if not self._does_object_exists(
                 bucket=destination_bucket, file_key=self.file_key
             ):
                 # Copy file to destination bucket
@@ -143,10 +134,8 @@ class FileSorter:
             # Verify object exists in destination bucket
             # before removing it from incoming (Unless Dry Run)
             if (
-                self._verify_object_exists(
-                    bucket=destination_bucket,
-                    file_key=self.file_key,
-                    etag=self.file_etag,
+                self._does_object_exists(
+                    bucket=destination_bucket, file_key=self.file_key
                 )
                 or self.dry_run
             ):
@@ -177,34 +166,25 @@ class FileSorter:
 
             raise ValueError(e)
 
-    def _verify_object_exists(self, bucket, file_key, etag=None):
+    def _does_object_exists(self, bucket, file_key):
         """
         Returns wether or not the file exists in the specified bucket
         """
+        s3 = boto3.resource("s3")
+
         try:
-            s3 = boto3.resource("s3")
-            s3_bucket_object = s3.ObjectSummary(bucket, file_key)
-
-            # Checks to see that both the file key the same
-            if s3_bucket_object.key == file_key:
-                # Checks to see if the file eTag is the same if check_etag is True
-                if etag:
-                    if s3_bucket_object.e_tag == etag:
-                        log.info(f"File {file_key} exists in Bucket {bucket}")
-                        return True
-                    else:
-                        return False
-                else:
-                    return True
-            else:
+            s3.Object(bucket, file_key).load()
+        except botocore.exceptions.ClientError as e:
+            if e.response["Error"]["Code"] == "404":
                 log.info(f"File {file_key} does not exist in Bucket {bucket}")
-
+                # The object does not exist.
                 return False
-
-        except botocore.exceptions.ClientError:
-            log.info(f"File {file_key} does not exist in Bucket {bucket}")
-
-            return False
+            else:
+                # Something else has gone wrong.
+                raise
+        else:
+            log.info(f"File {file_key} already exists in Bucket {bucket}")
+            return True
 
     def _copy_from_source_to_destination(
         self,
