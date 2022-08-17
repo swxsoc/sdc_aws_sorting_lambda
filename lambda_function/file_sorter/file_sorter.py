@@ -98,19 +98,19 @@ class FileSorter:
         ):
 
             # Dict of parsed science file
-            self.destination_bucket = self._get_destination_bucket(
+            destination_bucket = self._get_destination_bucket(
                 file_key=self.file_key
             )
 
             # Verify object does not exist in destination bucket
             if not self._verify_object_exists(
-                bucket=self.destination_bucket, file_key=self.file_key
+                bucket=destination_bucket, file_key=self.file_key, etag=self.file_etag
             ):
                 # Copy file to destination bucket
                 self._copy_from_source_to_destination(
                     source_bucket=self.incoming_bucket_name,
                     file_key=self.file_key,
-                    destination_bucket=self.destination_bucket,
+                    destination_bucket=destination_bucket,
                 )
             else:
                 # Add to unsorted if object already exists in destination bucket
@@ -123,7 +123,7 @@ class FileSorter:
                     {
                         "status": "ERROR",
                         "message": f"File {self.file_key}"
-                        f" already exists in {self.destination_bucket}",
+                        f" already exists in {destination_bucket}",
                     }
                 )
 
@@ -144,7 +144,7 @@ class FileSorter:
             # before removing it from incoming (Unless Dry Run)
             if (
                 self._verify_object_exists(
-                    bucket=self.destination_bucket,
+                    bucket=destination_bucket,
                     file_key=self.file_key,
                     etag=self.file_etag,
                 )
