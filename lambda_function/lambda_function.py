@@ -68,6 +68,6 @@ def sort_file(environment, s3_bucket, s3_object):
         return {"statusCode": 200, "body": json.dumps("File Sorted Successfully")}
 
     except BaseException as e:
-        log.error(f"Error occurred with FileSorter: {e}")
+        log.error({"status": "ERROR", "message": e})
 
         return {"statusCode": 500, "body": json.dumps("Error Sorting File")}

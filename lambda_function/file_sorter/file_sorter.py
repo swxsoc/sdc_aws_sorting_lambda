@@ -48,19 +48,29 @@ class FileSorter:
 
         except KeyError:
             error_message = "KeyError when extracting S3 Bucket Name/ARN from dict"
-            log.error(error_message)
+            log.error({"status": "ERROR", "message": error_message})
             raise KeyError(error_message)
 
         try:
             self.file_key = s3_object["key"]
             self.file_etag = f'"{s3_object["eTag"]}"'
 
-            log.info(f"Incoming Object Name Parsed Successfully: {self.file_key}")
-            log.info(f"Incoming Object eTag Parsed Successfully: {self.file_etag}")
+            log.info(
+                {
+                    "status": "INFO",
+                    "message": f"Incoming Object Name Parsed Successfully: {self.file_key}",
+                }
+            )
+            log.info(
+                {
+                    "status": "INFO",
+                    "message": f"Incoming Object eTag Parsed Successfully: {self.file_etag}",
+                }
+            )
 
         except KeyError:
             error_message = "KeyError when extracting S3 Object Name/eTag from dict"
-            log.error(error_message)
+            log.error({"status": "ERROR", "message": error_message})
             raise KeyError(error_message)
 
         # Variable that determines if FileSorter performs a Dry Run
@@ -107,8 +117,10 @@ class FileSorter:
                     f"{datetime.datetime.utcnow().strftime('%Y-%m-%d-%H%MZ')}"
                 )
                 log.error(
-                    "File already exists in destination bucket,"
-                    "moving to unsorted bucket"
+                    {
+                        "status": "ERROR",
+                        "message": f"File {self.file_key} already exists in {self.destination_bucket}",
+                    }
                 )
                 # Copy file to unsorted bucket
                 self._copy_from_source_to_destination(
@@ -155,7 +167,7 @@ class FileSorter:
             return destination_bucket
 
         except ValueError as e:
-            log.error(e)
+            log.error({"status": "ERROR", "message": e})
 
             raise ValueError(e)
 
@@ -217,7 +229,7 @@ class FileSorter:
             log.info(f"File {file_key} Successfully Moved to {destination_bucket}")
 
         except botocore.exceptions.ClientError as e:
-            log.error(e)
+            log.error({"status": "ERROR", "message": e})
 
             raise e
 
@@ -239,6 +251,6 @@ class FileSorter:
             log.info((f"File {file_key} Successfully Removed from" f" {bucket}"))
 
         except botocore.exceptions.ClientError as e:
-            log.error(e)
+            log.error({"status": "ERROR", "message": e})
 
             raise e
