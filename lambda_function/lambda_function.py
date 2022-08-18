@@ -24,6 +24,8 @@ def handler(event, context):
     handles the logic that initializes the FileProcessor class in it's correct
     environment.
     """
+
+    return event
     # Extract needed information from event
     try:
         for s3_event in event["Records"]:

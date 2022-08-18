@@ -212,7 +212,6 @@ class FileSorter:
         file_key=None,
         new_file_key=None,
     ):
-
         """
         Function to copy file from S3 incoming bucket using bucket key
         to destination bucket
@@ -253,7 +252,7 @@ class FileSorter:
             if not self.dry_run:
                 s3.Object(bucket, file_key).delete()
 
-            log.info((f"File {file_key} Successfully Removed from" f" {bucket}"))
+            log.info((f"File {file_key} Successfully Removed from {bucket}"))
 
         except botocore.exceptions.ClientError as e:
             log.error({"status": "ERROR", "message": e})
