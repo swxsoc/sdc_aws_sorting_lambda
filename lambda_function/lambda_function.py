@@ -8,7 +8,7 @@ and docstrings expanded
 
 import json
 import os
-
+import boto3
 
 # The below flake exceptions are to avoid the hermes.log writing
 # issue the above line solves
@@ -24,33 +24,35 @@ def handler(event, context):
     handles the logic that initializes the FileProcessor class in it's correct
     environment.
     """
-
-    return event
     # Extract needed information from event
     try:
+
+        environment = os.getenv("LAMBDA_ENVIRONMENT")
+        if environment is None:
+            environment = "DEVELOPMENT"
+
         for s3_event in event["Records"]:
 
             s3_bucket = s3_event["s3"]["bucket"]
-            s3_object = s3_event["s3"]["object"]
 
-            environment = os.getenv("LAMBDA_ENVIRONMENT")
-            if environment is None:
-                environment = "DEVELOPMENT"
             # Pass required variables to sort function and returns a 200 (Successful)
             # / 500 (Error) HTTP response
-            response = sort_file(environment, s3_bucket, s3_object)
+            response = sort_file(environment, s3_bucket)
 
             return response
 
     except KeyError:
 
+        # Pass required variables to sort function and returns a 200 (Successful)
+        # / 500 (Error) HTTP response
+        response = sort_file(environment)
         return {
             "statusCode": 500,
             "body": json.dumps("Key Error Extracting Variables from Event"),
         }
 
 
-def sort_file(environment, s3_bucket, s3_object):
+def sort_file(environment, s3_bucket="swsoc-incoming"):
     """
     This is the main function that handles logic that initializes the
     FileProcessor class in it's correct environment.
@@ -60,11 +62,12 @@ def sort_file(environment, s3_bucket, s3_object):
     try:
         log.info(f"Initializing FileSorter - Environment: {environment}")
 
-        if environment == "PRODUCTION":
-            FileSorter(
-                s3_bucket=s3_bucket, s3_object=s3_object, environment=environment
-            )
-        else:
+        s3 = boto3.resource("s3")
+
+        bucket = s3.Bucket("s3_bucket")
+
+        for s3_object in bucket.objects.all():
+
             FileSorter(
                 s3_bucket=s3_bucket, s3_object=s3_object, environment=environment
             )
