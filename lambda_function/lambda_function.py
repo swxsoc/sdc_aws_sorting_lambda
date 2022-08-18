@@ -69,7 +69,7 @@ def sort_file(environment, s3_bucket="swsoc-incoming"):
         for s3_object in bucket.objects.all():
 
             FileSorter(
-                s3_bucket=s3_bucket, s3_object=s3_object, environment=environment
+                s3_bucket=s3_bucket, s3_object=s3_object.key, environment=environment
             )
 
         log.info("File Sorted Successfully")
