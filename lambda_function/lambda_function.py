@@ -64,7 +64,7 @@ def sort_file(environment, s3_bucket="swsoc-incoming"):
 
         s3 = boto3.resource("s3")
 
-        bucket = s3.Bucket("s3_bucket")
+        bucket = s3.Bucket(s3_bucket)
 
         for s3_object in bucket.objects.all():
 
