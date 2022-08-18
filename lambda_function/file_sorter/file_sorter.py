@@ -41,7 +41,7 @@ class FileSorter:
 
         # Initialize Class Variables
         try:
-            self.incoming_bucket_name = s3_bucket["name"]
+            self.incoming_bucket_name = s3_bucket
             log.info(
                 f"Incoming Bucket Name Parsed Successfully: {self.incoming_bucket_name}"
             )
@@ -52,7 +52,7 @@ class FileSorter:
             raise KeyError(error_message)
 
         try:
-            self.file_key = s3_object["key"]
+            self.file_key = s3_object
 
             log.info(
                 {
