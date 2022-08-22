@@ -97,10 +97,13 @@ class FileSorter:
             if not self._does_object_exists(
                 bucket=destination_bucket, file_key=self.file_key
             ):
+                # File Key with folder
+                new_file_key = f"unprocessed/{self.file_key}"
                 # Copy file to destination bucket
                 self._copy_from_source_to_destination(
                     source_bucket=self.incoming_bucket_name,
                     file_key=self.file_key,
+                    new_file_key=new_file_key,
                     destination_bucket=destination_bucket,
                 )
             else:
@@ -135,7 +138,7 @@ class FileSorter:
             # before removing it from incoming (Unless Dry Run)
             if (
                 self._does_object_exists(
-                    bucket=destination_bucket, file_key=self.file_key
+                    bucket=destination_bucket, file_key=new_file_key
                 )
                 or self.dry_run
             ):
