@@ -98,7 +98,7 @@ class FileSorter:
                 bucket=destination_bucket, file_key=self.file_key
             ):
                 current_year = datetime.date.today().year
-                current_month = datetime.date.today().year
+                current_month = datetime.date.today().month
                 file_key_array = self.file_key.split("/")
                 parsed_file_key = file_key_array[-1]
 
