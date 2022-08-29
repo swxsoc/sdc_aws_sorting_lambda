@@ -92,21 +92,21 @@ class FileSorter:
 
             # Dict of parsed science file
             destination_bucket = self._get_destination_bucket(file_key=self.file_key)
+            current_year = datetime.date.today().year
+            current_month = datetime.date.today().month
+            file_key_array = self.file_key.split("/")
+            parsed_file_key = file_key_array[-1]
 
+            new_file_key = (
+                f"{util.VALID_DATA_LEVELS[0]}/"
+                f"{current_year}/{current_month}/"
+                f"{parsed_file_key}"
+            )
             # Verify object does not exist in destination bucket
             if not self._does_object_exists(
-                bucket=destination_bucket, file_key=self.file_key
+                bucket=destination_bucket, file_key=new_file_key
             ):
-                current_year = datetime.date.today().year
-                current_month = datetime.date.today().month
-                file_key_array = self.file_key.split("/")
-                parsed_file_key = file_key_array[-1]
 
-                new_file_key = (
-                    f"{util.VALID_DATA_LEVELS[0]}/"
-                    f"{current_year}/{current_month}/"
-                    f"{parsed_file_key}"
-                )
                 # Copy file to destination bucket
                 self._copy_from_source_to_destination(
                     source_bucket=self.incoming_bucket_name,
