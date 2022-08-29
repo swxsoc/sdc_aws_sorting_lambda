@@ -99,7 +99,8 @@ class FileSorter:
             ):
                 current_year = datetime.date.today().year
                 current_month = datetime.date.today().year
-                parsed_file_key = self.file_key.split("/")[self.file_key.length - 1]
+                file_key_array = self.file_key.split("/")
+                parsed_file_key = file_key_array[-1]
 
                 new_file_key = (
                     f"{util.VALID_DATE_LEVELS[0]}/"
