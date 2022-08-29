@@ -97,8 +97,15 @@ class FileSorter:
             if not self._does_object_exists(
                 bucket=destination_bucket, file_key=self.file_key
             ):
-                # File Key with folder
-                new_file_key = f"unprocessed/{self.file_key}"
+                current_year = datetime.date.today().year
+                current_month = datetime.date.today().year
+                parsed_file_key = self.file_key.split("/")[self.file_key.length - 1]
+
+                new_file_key = (
+                    f"{util.VALID_DATE_LEVELS[0]}/"
+                    f"{current_year}/{current_month}/"
+                    f"{parsed_file_key}"
+                )
                 # Copy file to destination bucket
                 self._copy_from_source_to_destination(
                     source_bucket=self.incoming_bucket_name,
