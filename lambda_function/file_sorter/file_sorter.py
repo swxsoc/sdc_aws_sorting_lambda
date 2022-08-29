@@ -103,7 +103,7 @@ class FileSorter:
                 parsed_file_key = file_key_array[-1]
 
                 new_file_key = (
-                    f"{util.VALID_DATE_LEVELS[0]}/"
+                    f"{util.VALID_DATA_LEVELS[0]}/"
                     f"{current_year}/{current_month}/"
                     f"{parsed_file_key}"
                 )
