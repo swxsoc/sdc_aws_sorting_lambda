@@ -5,6 +5,7 @@ HERMES instrument folder.
 TODO: Skeleton Code for initial repo, class still needs to be implemented including
 logging to DynamoDB + S3 log file and docstrings expanded
 """
+import uuid
 import boto3
 import botocore
 import datetime
