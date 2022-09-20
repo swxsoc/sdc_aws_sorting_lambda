@@ -116,6 +116,10 @@ class FileSorter:
                     new_file_key=new_file_key,
                     destination_bucket=destination_bucket,
                 )
+
+                # log action to dynamodb
+                self._log_to_dynamodb("PUT")
+
             else:
                 # Add to unsorted if object already exists in destination bucket
                 new_file_key = (
@@ -271,3 +275,27 @@ class FileSorter:
             log.error({"status": "ERROR", "message": e})
 
             raise e
+
+    def _log_to_dynamodb(self, action_type):
+        """
+        Function to log s3 action type to DynamoDB
+        """
+        # Initialize DynamoDB Client
+        dynamodb = boto3.resource("dynamodb")
+        table = dynamodb.Table("aws_sdc_s3_log_dynamodb_table")
+
+        # Create Item to be logged
+        item = {
+            "id": str(uuid.uuid4()),
+            "action_type": action_type,
+            "file_key": self.file_key,
+            "source_bucket": self.incoming_bucket_name,
+            "destination_bucket": self.destination_bucket_name,
+            "timestamp": str(datetime.datetime.utcnow()),
+        }
+
+        # Log Item to DynamoDB
+        if not self.dry_run:
+            table.put_item(Item=item)
+
+        log.info(f"Item {item} Successfully Added to DynamoDB")
