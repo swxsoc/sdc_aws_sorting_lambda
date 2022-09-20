@@ -118,9 +118,6 @@ class FileSorter:
                     destination_bucket=destination_bucket,
                 )
 
-                # log action to dynamodb
-                self._log_to_dynamodb("PUT")
-
             else:
                 # Add to unsorted if object already exists in destination bucket
                 new_file_key = (
@@ -246,8 +243,17 @@ class FileSorter:
                 bucket = s3.Bucket(destination_bucket)
                 if new_file_key:
                     bucket.copy(copy_source, new_file_key)
+                    # Log S3 Action to DynamoDB
+                    self._log_to_dynamodb(
+                        bucket=bucket, file_key=new_file_key, action_type="PUT"
+                    )
+
                 else:
                     bucket.copy(copy_source, file_key)
+                    # Log S3 Action to DynamoDB
+                    self._log_to_dynamodb(
+                        bucket=bucket, file_key=file_key, action_type="PUT"
+                    )
             log.info(f"File {file_key} Successfully Moved to {destination_bucket}")
 
         except botocore.exceptions.ClientError as e:
@@ -269,6 +275,10 @@ class FileSorter:
             # Copy S3 file from incoming bucket to destination bucket
             if not self.dry_run:
                 s3.Object(bucket, file_key).delete()
+                # Log S3 Action to DynamoDB
+                self._log_to_dynamodb(
+                    bucket=bucket, file_key=file_key, action_type="DELETE"
+                )
 
             log.info((f"File {file_key} Successfully Removed from {bucket}"))
 
@@ -277,7 +287,7 @@ class FileSorter:
 
             raise e
 
-    def _log_to_dynamodb(self, action_type):
+    def _log_to_dynamodb(self, bucket, file_key, action_type):
         """
         Function to log s3 action type to DynamoDB
         """
@@ -289,9 +299,8 @@ class FileSorter:
         item = {
             "id": str(uuid.uuid4()),
             "action_type": action_type,
-            "file_key": self.file_key,
-            "source_bucket": self.incoming_bucket_name,
-            "destination_bucket": self.destination_bucket_name,
+            "file_key": file_key,
+            "bucket": bucket,
             "timestamp": str(datetime.datetime.utcnow()),
         }
 
