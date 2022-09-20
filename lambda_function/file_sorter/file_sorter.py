@@ -243,17 +243,24 @@ class FileSorter:
                 bucket = s3.Bucket(destination_bucket)
                 if new_file_key:
                     bucket.copy(copy_source, new_file_key)
-                    # Log S3 Action to DynamoDB
-                    self._log_to_dynamodb(
-                        bucket=bucket, file_key=new_file_key, action_type="PUT"
-                    )
 
                 else:
                     bucket.copy(copy_source, file_key)
-                    # Log S3 Action to DynamoDB
-                    self._log_to_dynamodb(
-                        bucket=bucket, file_key=file_key, action_type="PUT"
-                    )
+
+            # Log to DynamoDB Table with uuid id
+            if not self.dry_run:
+                boto3.client("dynamodb").put_item(
+                    TableName="aws_sdc_s3_log_dynamodb_table",
+                    Item={
+                        "id": {"S": str(uuid.uuid4())},
+                        "source_bucket": {"S": source_bucket},
+                        "destination_bucket": {"S": destination_bucket},
+                        "file_key": {"S": file_key},
+                        "new_file_key": {"S": new_file_key},
+                        "action_type": {"S": "PUT"},
+                        "timestamp": {"S": datetime.datetime.utcnow().isoformat()},
+                    },
+                )
             log.info(f"File {file_key} Successfully Moved to {destination_bucket}")
 
         except botocore.exceptions.ClientError as e:
@@ -275,37 +282,21 @@ class FileSorter:
             # Copy S3 file from incoming bucket to destination bucket
             if not self.dry_run:
                 s3.Object(bucket, file_key).delete()
-                # Log S3 Action to DynamoDB
-                self._log_to_dynamodb(
-                    bucket=bucket, file_key=file_key, action_type="DELETE"
-                )
 
+                # Log to DynamoDB Table with uuid id
+                boto3.client("dynamodb").put_item(
+                    TableName="aws_sdc_s3_log_dynamodb_table",
+                    Item={
+                        "id": {"S": str(uuid.uuid4())},
+                        "source_bucket": {"S": bucket},
+                        "file_key": {"S": file_key},
+                        "action_type": {"S": "DELETE"},
+                        "timestamp": {"S": datetime.datetime.utcnow().isoformat()},
+                    },
+                )
             log.info((f"File {file_key} Successfully Removed from {bucket}"))
 
         except botocore.exceptions.ClientError as e:
             log.error({"status": "ERROR", "message": e})
 
             raise e
-
-    def _log_to_dynamodb(self, bucket, file_key, action_type):
-        """
-        Function to log s3 action type to DynamoDB
-        """
-        # Initialize DynamoDB Client
-        dynamodb = boto3.resource("dynamodb")
-        table = dynamodb.Table("aws_sdc_s3_log_dynamodb_table")
-
-        # Create Item to be logged
-        item = {
-            "id": str(uuid.uuid4()),
-            "action_type": action_type,
-            "file_key": file_key,
-            "bucket": bucket,
-            "timestamp": str(datetime.datetime.utcnow()),
-        }
-
-        # Log Item to DynamoDB
-        if not self.dry_run:
-            table.put_item(Item=item)
-
-        log.info(f"Item {item} Successfully Added to DynamoDB")
