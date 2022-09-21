@@ -75,6 +75,20 @@ class FileSorter:
         self.dry_run = dry_run
         if self.dry_run:
             log.warning("Performing Dry Run - Files will not be copied/removed")
+
+        # Log added file to Incoming Bucket in DYnamoDB
+        if not self.dry_run:
+            boto3.client("dynamodb").put_item(
+                TableName="aws_sdc_s3_log_dynamodb_table",
+                Item={
+                    "id": {"S": str(uuid.uuid4())},
+                    "destination_bucket": {"S": self.incoming_bucket_name},
+                    "file_key": {"S": self.file_key},
+                    "action_type": {"S": "PUT"},
+                    "timestamp": {"S": datetime.datetime.utcnow().isoformat()},
+                },
+            )
+
         # Call sort function
         self._sort_file()
 
