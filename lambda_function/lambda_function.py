@@ -66,7 +66,7 @@ def sort_file(environment, s3_bucket=None, file_key=None):
     try:
         log.info(f"Initializing FileSorter - Environment: {environment}")
 
-        if s3_bucket or file_key is None:
+        if not s3_bucket or not file_key:
             log.info("No S3 Bucket or File Key Provided")
             s3 = boto3.resource("s3")
             bucket = s3.Bucket("swsoc-incoming")
