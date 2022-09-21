@@ -321,8 +321,8 @@ class FileSorter:
             # Write to Timestream
             if not self.dry_run:
                 timestream.write_records(
-                    DatabaseName="sampleDB",
-                    TableName="test",
+                    DatabaseName="sdc_aws_logs",
+                    TableName="sdc_aws_s3_bucket_log_table",
                     Records=[
                         {
                             "Time": CURRENT_TIME,
