@@ -34,10 +34,11 @@ def handler(event, context):
         for s3_event in event["Records"]:
 
             s3_bucket = s3_event["s3"]["bucket"]["name"]
+            file_key = s3_event["s3"]["object"]["key"]
 
             # Pass required variables to sort function and returns a 200 (Successful)
             # / 500 (Error) HTTP response
-            response = sort_file(environment, s3_bucket)
+            response = sort_file(environment, s3_bucket, file_key)
 
             return response
 
@@ -52,7 +53,7 @@ def handler(event, context):
         }
 
 
-def sort_file(environment, s3_bucket="swsoc-incoming"):
+def sort_file(environment, s3_bucket=None, file_key=None):
     """
     This is the main function that handles logic that initializes the
     FileProcessor class in it's correct environment.
@@ -62,17 +63,21 @@ def sort_file(environment, s3_bucket="swsoc-incoming"):
     try:
         log.info(f"Initializing FileSorter - Environment: {environment}")
 
-        s3 = boto3.resource("s3")
+        if s3_bucket or file_key is None:
+            s3 = boto3.resource("s3")
+            bucket = s3.Bucket("swsoc-incoming")
+            for s3_object in bucket.objects.all():
 
-        bucket = s3.Bucket(s3_bucket)
+                FileSorter(
+                    s3_bucket=s3_bucket,
+                    s3_object=s3_object.key,
+                    environment=environment,
+                )
+            log.info("File Sorted Successfully")
 
-        for s3_object in bucket.objects.all():
-
-            FileSorter(
-                s3_bucket=s3_bucket, s3_object=s3_object.key, environment=environment
-            )
-
-        log.info("File Sorted Successfully")
+        else:
+            FileSorter(s3_bucket=s3_bucket, s3_object=file_key, environment=environment)
+            log.info("File Sorted Successfully")
 
         return {"statusCode": 200, "body": json.dumps("File Sorted Successfully")}
 
