@@ -9,6 +9,7 @@ import uuid
 import boto3
 import botocore
 import datetime
+import time
 
 # The below flake exceptions are to avoid the hermes.log writing
 # issue the above line solves
@@ -88,6 +89,33 @@ class FileSorter:
                     "timestamp": {"S": datetime.datetime.utcnow().isoformat()},
                 },
             )
+            DB_NAME = "sampleDB"
+            TBL_NAME = "test"
+            CURRENT_TIME = str(int(time.time() * 1000))
+
+            client = boto3.client("timestream-write")
+
+            dimension1 = [
+                {"Name": "source_bucket", "Value": None},
+                {"Name": "destination_bucket", "Value": self.incoming_bucket_name},
+                {"Name": "file_key", "Value": self.file_key},
+            ]
+
+            record1 = {
+                "Time": CURRENT_TIME,
+                "Dimensions": dimension1,
+                "MeasureName": "action_type",
+                "MeasureValue": "PUT",
+                "MeasureValueType": "VARCHAR",
+            }
+
+            records = [record1]
+
+            response = client.write_records(
+                DatabaseName=DB_NAME, TableName=TBL_NAME, Records=records
+            )
+
+            print(response)
 
         # Call sort function
         self._sort_file()
