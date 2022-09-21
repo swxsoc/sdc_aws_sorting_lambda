@@ -342,9 +342,9 @@ class FileSorter:
                                     "Value": new_file_key or "N/A",
                                 },
                             ],
-                            "MeasureName": "timestamp",
-                            "MeasureValue": str(datetime.datetime.utcnow().timestamp()),
-                            "MeasureValueType": "DOUBLE",
+                            "MeasureName": "action_type",
+                            "MeasureValue": action_type,
+                            "MeasureValueType": "VARCHAR",
                         },
                     ],
                 )
