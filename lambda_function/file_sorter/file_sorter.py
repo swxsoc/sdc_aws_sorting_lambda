@@ -318,6 +318,18 @@ class FileSorter:
             if not source_bucket and not destination_bucket:
                 raise ValueError("A Source or Destination Buckets is required")
 
+            # connect to s3 - assuming your creds are all set up and you have boto3 installed
+            s3 = boto3.resource("s3")
+
+            # get the bucket
+            bucket = s3.Bucket(destination_bucket)
+
+            # use loop and count increment
+            count_obj = 0
+            for i in bucket.objects.all():
+                print(i.key)
+                count_obj = count_obj + 1
+
             # Write to Timestream
             if not self.dry_run:
                 timestream.write_records(
@@ -340,6 +352,10 @@ class FileSorter:
                                 {
                                     "Name": "new_file_key",
                                     "Value": new_file_key or "N/A",
+                                },
+                                {
+                                    "Name": "current file count",
+                                    "Value": count_obj or "N/A",
                                 },
                             ],
                             "MeasureName": "timestamp",
