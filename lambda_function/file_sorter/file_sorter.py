@@ -5,7 +5,6 @@ HERMES instrument folder.
 TODO: Skeleton Code for initial repo, class still needs to be implemented including
 logging to DynamoDB + S3 log file and docstrings expanded
 """
-import uuid
 import boto3
 import botocore
 import datetime
@@ -77,45 +76,11 @@ class FileSorter:
         if self.dry_run:
             log.warning("Performing Dry Run - Files will not be copied/removed")
 
-        # Log added file to Incoming Bucket in DYnamoDB
+        # Log added file to Incoming Bucket in Timestream
         if not self.dry_run:
-            boto3.client("dynamodb").put_item(
-                TableName="aws_sdc_s3_log_dynamodb_table",
-                Item={
-                    "id": {"S": str(uuid.uuid4())},
-                    "destination_bucket": {"S": self.incoming_bucket_name},
-                    "file_key": {"S": self.file_key},
-                    "action_type": {"S": "PUT"},
-                    "timestamp": {"S": datetime.datetime.utcnow().isoformat()},
-                },
+            self._log_to_timestream(
+                action_type="PUT", file_key=self.file_key, destination_bucket=s3_bucket
             )
-            DB_NAME = "sampleDB"
-            TBL_NAME = "test"
-            CURRENT_TIME = str(int(time.time() * 1000))
-
-            client = boto3.client("timestream-write")
-
-            dimension1 = [
-                {"Name": "source_bucket", "Value": None},
-                {"Name": "destination_bucket", "Value": self.incoming_bucket_name},
-                {"Name": "file_key", "Value": self.file_key},
-            ]
-
-            record1 = {
-                "Time": CURRENT_TIME,
-                "Dimensions": dimension1,
-                "MeasureName": "action_type",
-                "MeasureValue": "PUT",
-                "MeasureValueType": "VARCHAR",
-            }
-
-            records = [record1]
-
-            response = client.write_records(
-                DatabaseName=DB_NAME, TableName=TBL_NAME, Records=records
-            )
-
-            print(response)
 
         # Call sort function
         self._sort_file()
@@ -289,20 +254,16 @@ class FileSorter:
                 else:
                     bucket.copy(copy_source, file_key)
 
-            # Log to DynamoDB Table with uuid id
+            # Log added file to Incoming Bucket in Timestream
             if not self.dry_run:
-                boto3.client("dynamodb").put_item(
-                    TableName="aws_sdc_s3_log_dynamodb_table",
-                    Item={
-                        "id": {"S": str(uuid.uuid4())},
-                        "source_bucket": {"S": source_bucket},
-                        "destination_bucket": {"S": destination_bucket},
-                        "file_key": {"S": file_key},
-                        "new_file_key": {"S": new_file_key},
-                        "action_type": {"S": "PUT"},
-                        "timestamp": {"S": datetime.datetime.utcnow().isoformat()},
-                    },
+                self._log_to_timestream(
+                    action_type="PUT",
+                    file_key=file_key,
+                    new_file_key=new_file_key,
+                    source_bucket=source_bucket,
+                    destination_bucket=destination_bucket,
                 )
+
             log.info(f"File {file_key} Successfully Moved to {destination_bucket}")
 
         except botocore.exceptions.ClientError as e:
@@ -325,18 +286,70 @@ class FileSorter:
             if not self.dry_run:
                 s3.Object(bucket, file_key).delete()
 
-                # Log to DynamoDB Table with uuid id
-                boto3.client("dynamodb").put_item(
-                    TableName="aws_sdc_s3_log_dynamodb_table",
-                    Item={
-                        "id": {"S": str(uuid.uuid4())},
-                        "source_bucket": {"S": bucket},
-                        "file_key": {"S": file_key},
-                        "action_type": {"S": "DELETE"},
-                        "timestamp": {"S": datetime.datetime.utcnow().isoformat()},
-                    },
+                # Log added file to Incoming Bucket in Timestream
+                self._log_to_timestream(
+                    action_type="DELETE", file_key=file_key, source_bucket=bucket
                 )
+
             log.info((f"File {file_key} Successfully Removed from {bucket}"))
+
+        except botocore.exceptions.ClientError as e:
+            log.error({"status": "ERROR", "message": e})
+
+            raise e
+
+    def _log_to_timestream(
+        self,
+        action_type,
+        file_key,
+        new_file_key=None,
+        source_bucket=None,
+        destination_bucket=None,
+    ):
+        """
+        Function to log to Timestream
+        """
+        log.info("Logging to Timestream")
+        CURRENT_TIME = str(int(time.time() * 1000))
+        try:
+            # Initialize Timestream Client
+            timestream = boto3.client("timestream-write")
+
+            if not source_bucket and not destination_bucket:
+                raise ValueError("A Source or Destination Buckets is required")
+
+            # Write to Timestream
+            if not self.dry_run:
+                timestream.write_records(
+                    DatabaseName="sampleDB",
+                    TableName="test",
+                    Records=[
+                        {
+                            "Time": CURRENT_TIME,
+                            "Dimensions": [
+                                {"Name": "action_type", "Value": action_type},
+                                {
+                                    "Name": "source_bucket",
+                                    "Value": source_bucket or "N/A",
+                                },
+                                {
+                                    "Name": "destination_bucket",
+                                    "Value": destination_bucket or "N/A",
+                                },
+                                {"Name": "file_key", "Value": file_key},
+                                {
+                                    "Name": "new_file_key",
+                                    "Value": new_file_key or "N/A",
+                                },
+                            ],
+                            "MeasureName": "timestamp",
+                            "MeasureValue": str(datetime.datetime.utcnow().timestamp()),
+                            "MeasureValueType": "DOUBLE",
+                        },
+                    ],
+                )
+
+            log.info((f"File {file_key} Successfully Logged to Timestream"))
 
         except botocore.exceptions.ClientError as e:
             log.error({"status": "ERROR", "message": e})
