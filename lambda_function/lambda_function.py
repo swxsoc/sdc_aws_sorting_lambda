@@ -32,10 +32,12 @@ def handler(event, context):
             environment = "DEVELOPMENT"
 
         for s3_event in event["Records"]:
-            log.info(s3_event)
 
             s3_bucket = s3_event["s3"]["bucket"]["name"]
             file_key = s3_event["s3"]["object"]["key"]
+
+            log.info(f"Bucket: {s3_bucket}")
+            log.info(f"File Key: {file_key}")
 
             # Pass required variables to sort function and returns a 200 (Successful)
             # / 500 (Error) HTTP response
