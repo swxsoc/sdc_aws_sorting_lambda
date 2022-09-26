@@ -323,7 +323,10 @@ class FileSorter:
             s3 = boto3.resource("s3")
 
             # get the bucket
+
             bucket = s3.Bucket(destination_bucket)
+            if action_type == "DELETE":
+                bucket = s3.Bucket(source_bucket)
 
             # use loop and count increment
             count_obj = 0
