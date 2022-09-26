@@ -179,12 +179,15 @@ class FileSorter:
             # science_file = util.parse_science_filename(file_key)
             if "MAG" in file_key:
                 instrument = "nemisis"
-            if "EEA" in file_key:
+            elif "EEA" in file_key:
                 instrument = "eea"
-            if "SPANI" in file_key:
+            elif "SPANI" in file_key:
                 instrument = "spani"
-            if "MERIT" in file_key:
+            elif "MERIT" in file_key:
                 instrument = "merit"
+            else:
+                raise ValueError("File does not have a valid instrument")
+
             destination_bucket = INSTRUMENT_BUCKET_NAMES[instrument]
             # destination_bucket = INSTRUMENT_BUCKET_NAMES[science_file["instrument"]]
             log.info(f"Destination Bucket Parsed Successfully: {destination_bucket}")
