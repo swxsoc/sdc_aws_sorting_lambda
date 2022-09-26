@@ -176,9 +176,17 @@ class FileSorter:
         """
         try:
 
-            science_file = util.parse_science_filename(file_key)
-
-            destination_bucket = INSTRUMENT_BUCKET_NAMES[science_file["instrument"]]
+            # science_file = util.parse_science_filename(file_key)
+            if "MAG" in file_key:
+                instrument = "nemisis"
+            if "EEA" in file_key:
+                instrument = "eea"
+            if "SPANI" in file_key:
+                instrument = "spani"
+            if "MERIT" in file_key:
+                instrument = "merit"
+            destination_bucket = INSTRUMENT_BUCKET_NAMES[instrument]
+            # destination_bucket = INSTRUMENT_BUCKET_NAMES[science_file["instrument"]]
             log.info(f"Destination Bucket Parsed Successfully: {destination_bucket}")
 
             return destination_bucket
