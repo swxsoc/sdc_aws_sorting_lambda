@@ -26,7 +26,7 @@ def handler(event, context):
     """
     # Extract needed information from event
     try:
-
+        log.info("Event: {}".format(event))
         environment = os.getenv("LAMBDA_ENVIRONMENT")
         if environment is None:
             environment = "DEVELOPMENT"
