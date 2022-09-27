@@ -175,21 +175,11 @@ class FileSorter:
         Returns bucket in which the file will be sorted to
         """
         try:
+            file_key_array = file_key.split("/")
+            parsed_file_key = file_key_array[-1]
 
-            # science_file = util.parse_science_filename(file_key)
-            if "MAG" in file_key:
-                instrument = "nemisis"
-            elif "EEA" in file_key:
-                instrument = "eea"
-            elif "SPANI" in file_key:
-                instrument = "spani"
-            elif "MERIT" in file_key:
-                instrument = "merit"
-            else:
-                raise ValueError("File does not have a valid instrument")
-
-            destination_bucket = INSTRUMENT_BUCKET_NAMES[instrument]
-            # destination_bucket = INSTRUMENT_BUCKET_NAMES[science_file["instrument"]]
+            science_file = util.parse_science_filename(parsed_file_key)
+            destination_bucket = INSTRUMENT_BUCKET_NAMES[science_file["instrument"]]
             log.info(f"Destination Bucket Parsed Successfully: {destination_bucket}")
 
             return destination_bucket

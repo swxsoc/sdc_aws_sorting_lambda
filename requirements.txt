@@ -1,2 +1,2 @@
-hermes_core @ git+https://github.com/ehsteve/hermes_core.git@l0_filename
+hermes_core @ git+https://github.com/HERMES-SOC/hermes_core.git
 boto3

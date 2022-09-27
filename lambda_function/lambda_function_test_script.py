@@ -1,7 +1,8 @@
 """
 Script to be used for testing the lambda handler locally
 """
-from lambda_function import handler
+# from lambda_function import handler
+from hermes_core.util import util  # noqa: E402
 
 if __name__ == "__main__":
     # Set Event to Lambda Handler With
