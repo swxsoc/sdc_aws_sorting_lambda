@@ -237,7 +237,7 @@ class FileSorter:
                             (
                                 f"File ({file_key}) "
                                 "Successfully Sorted to "
-                                "{destination_bucket}"
+                                f"{destination_bucket}"
                             ),
                         )
 
