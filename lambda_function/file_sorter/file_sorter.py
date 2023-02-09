@@ -1,14 +1,14 @@
 """
 This Module contains the FileSorter class that will sort the files into the appropriate
 HERMES instrument folder.
-
-TODO: Skeleton Code for initial repo, class still needs to be implemented including
-logging to DynamoDB + S3 log file and docstrings expanded
 """
+import os
 import boto3
 import botocore
 import datetime
 import time
+from slack_sdk import WebClient
+from slack_sdk.errors import SlackApiError
 
 # The below flake exceptions are to avoid the hermes.log writing
 # issue the above line solves
@@ -79,7 +79,34 @@ class FileSorter:
         # Log added file to Incoming Bucket in Timestream
         if not self.dry_run:
             self._log_to_timestream(
-                action_type="PUT", file_key=self.file_key, destination_bucket=s3_bucket
+                action_type="PUT",
+                file_key=self.file_key,
+                destination_bucket=s3_bucket,
+            )
+
+        try:
+            # Initialize the slack client
+            self.slack_client = WebClient(token=os.getenv("SLACK_TOKEN"))
+
+            # Initialize the slack channel
+            self.slack_channel = os.getenv("SLACK_CHANNEL")
+
+        except SlackApiError as e:
+            error_code = int(e.response["Error"]["Code"])
+            if error_code == 404:
+                log.error(
+                    {
+                        "status": "ERROR",
+                        "message": "Slack Token is invalid",
+                    }
+                )
+
+        except Exception as e:
+            log.error(
+                {
+                    "status": "ERROR",
+                    "message": f"Error when initializing slack client: {e}",
+                }
             )
 
         # Call sort function
@@ -97,7 +124,6 @@ class FileSorter:
             )
             or self.dry_run
         ):
-
             # Dict of parsed science file
             destination_bucket = self._get_destination_bucket(file_key=self.file_key)
             current_year = datetime.date.today().year
@@ -116,7 +142,6 @@ class FileSorter:
             if not self._does_object_exists(
                 bucket=destination_bucket, file_key=new_file_key
             ):
-
                 # Copy file to destination bucket
                 self._copy_from_source_to_destination(
                     source_bucket=self.incoming_bucket_name,
@@ -205,6 +230,16 @@ class FileSorter:
                 bucket = s3.Bucket(destination_bucket)
                 if new_file_key:
                     bucket.copy(copy_source, new_file_key)
+                    if self.slack_client:
+                        self._send_slack_notification(
+                            self.slack_client,
+                            self.slack_channel,
+                            (
+                                f"File ({file_key}) "
+                                "Successfully Sorted to "
+                                "{destination_bucket}"
+                            ),
+                        )
 
                 else:
                     bucket.copy(copy_source, file_key)
@@ -225,6 +260,51 @@ class FileSorter:
             log.error({"status": "ERROR", "message": e})
 
             raise e
+
+    @staticmethod
+    def _send_slack_notification(
+        slack_client,
+        slack_channel: str,
+        slack_message: str,
+        alert_type: str = "success",
+    ) -> None:
+        """
+        Function to send a Slack Notification
+        """
+        log.info(f"Sending Slack Notification to {slack_channel}")
+        try:
+            color = {
+                "success": "#9b59b6",
+                "error": "#ff0000",
+            }
+            ct = datetime.datetime.now()
+            ts = ct.strftime("%y-%m-%d %H:%M:%S")
+            slack_client.chat_postMessage(
+                channel=slack_channel,
+                text=f"{ts} - {slack_message}",
+                attachments=[
+                    {
+                        "color": color[alert_type],
+                        "blocks": [
+                            {
+                                "type": "section",
+                                "text": {
+                                    "type": "plain_text",
+                                    "text": f"{ts} - {slack_message}",
+                                },
+                            }
+                        ],
+                    }
+                ],
+            )
+
+        except SlackApiError as e:
+            log.error(
+                {
+                    "status": "ERROR",
+                    "message": f"Error sending Slack Notification: {e}",
+                }
+            )
 
     def _log_to_timestream(
         self,
@@ -262,7 +342,6 @@ class FileSorter:
                 print(i.key)
                 count_obj = count_obj + 1
 
-            print(count_obj)
             # Write to Timestream
             if not self.dry_run:
                 timestream.write_records(
