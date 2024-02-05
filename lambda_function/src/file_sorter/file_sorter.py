@@ -2,6 +2,7 @@
 FileSorter class that will sort the files into the appropriate
 HERMES instrument folder.
 """
+
 import os
 import json
 from pathlib import Path

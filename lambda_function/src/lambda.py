@@ -3,7 +3,6 @@ Handler function and the main function for the AWS Lambda,
 which initializes the FileSorter class in the appropriate environment.
 """
 
-
 from file_sorter import file_sorter
 
 
