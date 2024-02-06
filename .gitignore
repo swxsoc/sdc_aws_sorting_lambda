@@ -65,3 +65,6 @@ __pycache__
 # CDK asset staging directory
 .cdk.staging
 cdk.out
+
+# Mac hidden files
+.DS_Store
