@@ -2,22 +2,14 @@
 FileSorter class that will sort the files into the appropriate
 HERMES instrument folder.
 """
-import logging as log
-
-# Basic configuration
-log.basicConfig(level=log.DEBUG,  # Set to DEBUG to capture all messages
-                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-# Ensure propagation to root logger
-log = log.getLogger('my_logger')
-log.propagate = True  # Ensures propagation to the root logger
 
 import os
 import json
 from pathlib import Path
 
 from slack_sdk.errors import SlackApiError
-
+from swxsoc.util.util import parse_science_filename
+from sdc_aws_utils.logging import log, configure_logger
 from sdc_aws_utils.aws import (
     create_s3_client_session,
     create_timestream_client_session,
@@ -30,13 +22,13 @@ from sdc_aws_utils.aws import (
 )
 from sdc_aws_utils.slack import get_slack_client, send_pipeline_notification
 from sdc_aws_utils.config import (
-    parser,
     get_incoming_bucket,
     get_instrument_bucket,
     get_all_instrument_buckets,
 )
 
-
+# Configure logging levels and format
+configure_logger()
 
 
 def handle_event(event, context):
@@ -71,7 +63,7 @@ def handle_event(event, context):
             try:
                 # Get file name from file key
                 path_file = Path(key)
-                parsed_file_key = create_s3_file_key(parser, path_file.name)
+                parsed_file_key = create_s3_file_key(parse_science_filename, path_file.name)
             except ValueError:
                 continue
 
@@ -140,7 +132,7 @@ class FileSorter:
 
         self.s3_client = s3_client or create_s3_client_session()
 
-        self.science_file = parser(self.file_key)
+        self.science_file = parse_science_filename(self.file_key)
         self.incoming_bucket_name = s3_bucket
         self.destination_bucket = get_instrument_bucket(
             self.science_file["instrument"], environment
@@ -167,7 +159,7 @@ class FileSorter:
             try:
                 # Get file name from file key
                 path_file = Path(self.file_key)
-                new_file_key = create_s3_file_key(parser, path_file.name)
+                new_file_key = create_s3_file_key(parse_science_filename, path_file.name)
             except ValueError:
                 log.warning(f"Error parsing file key: {self.file_key}")
                 return None
@@ -211,6 +203,9 @@ class FileSorter:
             log.info(
                 f"File {self.file_key} Successfully Moved to {self.destination_bucket}"
             )
+
+        else:
+            raise ValueError("File does not exist in bucket")
 
         else:
             raise ValueError("File does not exist in bucket")
