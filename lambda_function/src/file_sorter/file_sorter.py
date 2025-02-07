@@ -131,8 +131,11 @@ class FileSorter:
             self.timestream_client = None
 
         self.s3_client = s3_client or create_s3_client_session()
-
-        self.science_file = parse_science_filename(self.file_key)
+        try:
+            self.science_file = parse_science_filename(self.file_key)
+        except Exception as e:
+            log.error(f"Issue parsing file: {self.file_key}")
+            raise e
         self.incoming_bucket_name = s3_bucket
         self.destination_bucket = get_instrument_bucket(
             self.science_file["instrument"], environment
