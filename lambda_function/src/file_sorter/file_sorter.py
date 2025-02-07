@@ -48,6 +48,7 @@ def handle_event(event, context):
             for s3_event in event["Records"]:
                 s3_bucket = s3_event["s3"]["bucket"]["name"]
                 file_key = s3_event["s3"]["object"]["key"]
+                log.debug("initiating file sorter")
                 FileSorter(s3_bucket, file_key, environment)
             return {"statusCode": 200, "body": json.dumps("Success Sorting File")}
 
@@ -102,6 +103,7 @@ class FileSorter:
         Initialize the FileSorter object.
         """
         try:
+            log.debug("initiating slack")
             # Initialize the slack client
             self.slack_client = get_slack_client(
                 slack_token=os.getenv("SDC_AWS_SLACK_TOKEN")
@@ -122,7 +124,7 @@ class FileSorter:
                 )
 
         self.file_key = file_key
-
+        log.debug(f"file key {self.file_key}")
         try:
             self.timestream_client = (
                 timestream_client or create_timestream_client_session()
@@ -132,8 +134,11 @@ class FileSorter:
             self.timestream_client = None
 
         self.s3_client = s3_client or create_s3_client_session()
-
-        self.science_file = parser(self.file_key)
+        try:
+            log.debug("attempting to parse file key")
+            self.science_file = parser(self.file_key)
+        except Exception as e:
+            raise e
         self.incoming_bucket_name = s3_bucket
         self.destination_bucket = get_instrument_bucket(
             self.science_file["instrument"], environment
