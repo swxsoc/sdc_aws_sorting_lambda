@@ -9,7 +9,7 @@ log.basicConfig(level=log.DEBUG,  # Set to DEBUG to capture all messages
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 # Ensure propagation to root logger
-log = logging.getLogger('my_logger')
+log = log.getLogger('my_logger')
 log.propagate = True  # Ensures propagation to the root logger
 
 import os
