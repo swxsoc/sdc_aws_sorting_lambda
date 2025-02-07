@@ -207,5 +207,3 @@ class FileSorter:
         else:
             raise ValueError("File does not exist in bucket")
 
-        else:
-            raise ValueError("File does not exist in bucket")
