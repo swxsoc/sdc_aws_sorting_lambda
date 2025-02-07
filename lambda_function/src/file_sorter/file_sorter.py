@@ -2,14 +2,22 @@
 FileSorter class that will sort the files into the appropriate
 HERMES instrument folder.
 """
+import logging as log
+
+# Basic configuration
+log.basicConfig(level=log.DEBUG,  # Set to DEBUG to capture all messages
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+# Ensure propagation to root logger
+log = logging.getLogger('my_logger')
+log.propagate = True  # Ensures propagation to the root logger
 
 import os
 import json
 from pathlib import Path
 
 from slack_sdk.errors import SlackApiError
-from swxsoc.util import util
-from sdc_aws_utils.logging import log, configure_logger
+
 from sdc_aws_utils.aws import (
     create_s3_client_session,
     create_timestream_client_session,
@@ -28,8 +36,7 @@ from sdc_aws_utils.config import (
     get_all_instrument_buckets,
 )
 
-# Configure logging levels and format
-configure_logger()
+
 
 
 def handle_event(event, context):
@@ -48,7 +55,6 @@ def handle_event(event, context):
             for s3_event in event["Records"]:
                 s3_bucket = s3_event["s3"]["bucket"]["name"]
                 file_key = s3_event["s3"]["object"]["key"]
-                log.debug("initiating file sorter")
                 FileSorter(s3_bucket, file_key, environment)
             return {"statusCode": 200, "body": json.dumps("Success Sorting File")}
 
@@ -65,7 +71,7 @@ def handle_event(event, context):
             try:
                 # Get file name from file key
                 path_file = Path(key)
-                parsed_file_key = create_s3_file_key(util.create_science_filename, path_file.name)
+                parsed_file_key = create_s3_file_key(parser, path_file.name)
             except ValueError:
                 continue
 
@@ -103,7 +109,6 @@ class FileSorter:
         Initialize the FileSorter object.
         """
         try:
-            log.debug("initiating slack")
             # Initialize the slack client
             self.slack_client = get_slack_client(
                 slack_token=os.getenv("SDC_AWS_SLACK_TOKEN")
@@ -124,7 +129,7 @@ class FileSorter:
                 )
 
         self.file_key = file_key
-        log.debug(f"file key {self.file_key}")
+
         try:
             self.timestream_client = (
                 timestream_client or create_timestream_client_session()
@@ -134,19 +139,12 @@ class FileSorter:
             self.timestream_client = None
 
         self.s3_client = s3_client or create_s3_client_session()
-        try:
-            log.debug("attempting to parse file key")
-            self.science_file = util.create_science_filename(self.file_key)
-        except Exception as e:
-            raise e
-        log.debug("failure point")
-        log.debug(self.science_file)
+
+        self.science_file = parser(self.file_key)
         self.incoming_bucket_name = s3_bucket
         self.destination_bucket = get_instrument_bucket(
             self.science_file["instrument"], environment
         )
-        log.debug("failure point")
-        log.debug(self.destination_bucket)
         self.dry_run = dry_run
         if self.dry_run:
             log.warning("Performing Dry Run - Files will not be copied/removed")
@@ -169,7 +167,7 @@ class FileSorter:
             try:
                 # Get file name from file key
                 path_file = Path(self.file_key)
-                new_file_key = create_s3_file_key(util.create_science_filename, path_file.name)
+                new_file_key = create_s3_file_key(parser, path_file.name)
             except ValueError:
                 log.warning(f"Error parsing file key: {self.file_key}")
                 return None
