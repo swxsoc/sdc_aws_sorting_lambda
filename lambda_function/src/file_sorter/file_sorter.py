@@ -139,10 +139,16 @@ class FileSorter:
             self.science_file = parser(self.file_key)
         except Exception as e:
             raise e
+        
+        log.debug("failure point")
+        log.debug(self.science_file)
+
         self.incoming_bucket_name = s3_bucket
         self.destination_bucket = get_instrument_bucket(
             self.science_file["instrument"], environment
         )
+        log.debug("failure point")
+        log.debug(self.destination_bucket)
         self.dry_run = dry_run
         if self.dry_run:
             log.warning("Performing Dry Run - Files will not be copied/removed")
