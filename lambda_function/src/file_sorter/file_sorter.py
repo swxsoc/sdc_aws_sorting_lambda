@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 
 from slack_sdk.errors import SlackApiError
-
+from swxsoc.util import util
 from sdc_aws_utils.logging import log, configure_logger
 from sdc_aws_utils.aws import (
     create_s3_client_session,
@@ -65,7 +65,7 @@ def handle_event(event, context):
             try:
                 # Get file name from file key
                 path_file = Path(key)
-                parsed_file_key = create_s3_file_key(parser, path_file.name)
+                parsed_file_key = create_s3_file_key(util.create_science_filename, path_file.name)
             except ValueError:
                 continue
 
@@ -136,7 +136,7 @@ class FileSorter:
         self.s3_client = s3_client or create_s3_client_session()
         try:
             log.debug("attempting to parse file key")
-            self.science_file = parser(self.file_key)
+            self.science_file = util.create_science_filename(self.file_key)
         except Exception as e:
             raise e
         log.debug("failure point")
@@ -169,7 +169,7 @@ class FileSorter:
             try:
                 # Get file name from file key
                 path_file = Path(self.file_key)
-                new_file_key = create_s3_file_key(parser, path_file.name)
+                new_file_key = create_s3_file_key(util.create_science_filename, path_file.name)
             except ValueError:
                 log.warning(f"Error parsing file key: {self.file_key}")
                 return None
