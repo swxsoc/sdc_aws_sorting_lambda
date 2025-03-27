@@ -74,6 +74,8 @@ def handle_event(event, context):
 
             log.info(f"File {parsed_file_key} does not exist in target buckets.")
             try:
+                # Assign the s3_bucket variable here
+                s3_bucket = incoming_bucket
                 FileSorter(s3_bucket, key, environment)
             except Exception as e:
                 log.error(f"Error sorting file {parsed_file_key}: {e}")
