@@ -63,7 +63,9 @@ def handle_event(event, context):
             try:
                 # Get file name from file key
                 path_file = Path(key)
-                parsed_file_key = create_s3_file_key(parse_science_filename, path_file.name)
+                parsed_file_key = create_s3_file_key(
+                    parse_science_filename, path_file.name
+                )
             except ValueError:
                 continue
 
@@ -164,7 +166,9 @@ class FileSorter:
             try:
                 # Get file name from file key
                 path_file = Path(self.file_key)
-                new_file_key = create_s3_file_key(parse_science_filename, path_file.name)
+                new_file_key = create_s3_file_key(
+                    parse_science_filename, path_file.name
+                )
             except ValueError:
                 log.warning(f"Error parsing file key: {self.file_key}")
                 return None
@@ -211,4 +215,3 @@ class FileSorter:
 
         else:
             raise ValueError("File does not exist in bucket")
-
