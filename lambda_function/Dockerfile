@@ -19,7 +19,7 @@ RUN pip install -r requirements.txt
 WORKDIR ${FUNCTION_DIR}
 
 # Set Up Lambda Runtime Environment
-RUN apt-get install -y curl && curl -Lo /usr/local/bin/aws-lambda-rie \
+RUN apt-get update && apt-get install -y curl && curl -Lo /usr/local/bin/aws-lambda-rie \
     https://github.com/aws/aws-lambda-runtime-interface-emulator/releases/latest/download/aws-lambda-rie && \
     chmod +x /usr/local/bin/aws-lambda-rie
 
