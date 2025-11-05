@@ -45,6 +45,7 @@ def handle_event(event, context):
     if "Records" in event:
         try:
             for s3_event in event["Records"]:
+                log.info(f"Processing S3 event: {s3_event}")
                 s3_bucket = s3_event["s3"]["bucket"]["name"]
                 file_key = s3_event["s3"]["object"]["key"]
                 FileSorter(s3_bucket, file_key, environment)
@@ -104,15 +105,21 @@ class FileSorter:
         """
         Initialize the FileSorter object.
         """
+        log.info("Initializing FileSorter with parameters:")
+        log.info(f"S3 Bucket: {s3_bucket}")
+        log.info(f"File Key: {file_key}")
+        log.info(f"Environment: {environment}")
+        log.info(f"Dry Run: {dry_run}")
+
         try:
             # Initialize the slack client
+            log.info("Initializing Slack client.")
             self.slack_client = get_slack_client(
                 slack_token=os.getenv("SDC_AWS_SLACK_TOKEN")
             )
 
             # Initialize the slack channel
             self.slack_channel = os.getenv("SDC_AWS_SLACK_CHANNEL")
-
         except SlackApiError as e:
             error_code = int(e.response["Error"]["Code"])
             self.slack_client = None
@@ -126,7 +133,21 @@ class FileSorter:
 
         self.file_key = file_key
 
+        # Send Initial Slack Notification about file upload
+        if self.slack_client:
+            log.info("Sending upload notification to Slack.")
+            send_pipeline_notification(
+                slack_client=self.slack_client,
+                slack_channel=self.slack_channel,
+                path=self.file_key,
+                bucket_name=s3_bucket,
+                alert_type="upload",
+            )
+        else:
+            log.info("Slack client not initialized; skipping upload notification.")
+
         try:
+            log.info("Initializing Timestream client.")
             self.timestream_client = (
                 timestream_client or create_timestream_client_session()
             )
@@ -134,16 +155,24 @@ class FileSorter:
             log.error(f"Error creating Timestream client: {e}")
             self.timestream_client = None
 
+        log.info("Initializing S3 client.")
         self.s3_client = s3_client or create_s3_client_session()
+
         try:
+            log.info(f"Parsing science filename: {self.file_key}")
             self.science_file = parse_science_filename(self.file_key)
         except Exception as e:
             log.error(f"Issue parsing file: {self.file_key}")
             raise e
+
         self.incoming_bucket_name = s3_bucket
         self.destination_bucket = get_instrument_bucket(
             self.science_file["instrument"], environment
         )
+        log.info(
+            f"Sorting from Incoming Bucket: {self.incoming_bucket_name} to Destination Bucket: {self.destination_bucket}"
+        )
+
         self.dry_run = dry_run
         if self.dry_run:
             log.warning("Performing Dry Run - Files will not be copied/removed")
@@ -194,6 +223,7 @@ class FileSorter:
                         slack_client=self.slack_client,
                         slack_channel=self.slack_channel,
                         path=new_file_key,
+                        bucket_name=self.incoming_bucket_name,
                         alert_type="sorted",
                     )
 

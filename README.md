@@ -64,3 +64,23 @@ command.
  * `cdk deploy`      deploy this stack to your default AWS account/region
  * `cdk diff`        compare deployed stack with current state
  * `cdk docs`        open CDK documentation
+
+## Testing Locally (Using own Test Data):
+
+1. Build the lambda container image (from within the lambda_function folder) you'd like to test: 
+    
+    ```sh
+    docker build -t sdc_aws_sorting_lambda:latest .
+    ```
+
+2. Run the lambda container image you've built (After using your mfa script), this will start the lambda runtime environment:
+
+    ```sh
+    docker run -p 9000:8080 -v sdc_aws_sorting_lambda/lambda_function/tests/test_data:/test_data sdc_aws_sorting_lambda:latest
+    ```
+
+3. From a `separate` terminal, make a curl request to the running lambda function:
+
+    ```sh
+    curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d @lambda_function/tests/test_data/test_padre_event.json
+    ```

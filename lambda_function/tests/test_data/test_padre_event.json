@@ -1,0 +1,21 @@
+{
+   "Records": [
+      {
+         "eventSource": "aws:s3",
+         "awsRegion": "us-east-1",
+         "eventTime": "2022-07-25T09:35:08.284Z",
+         "eventName": "ObjectCreated:Put",
+         "s3": {
+            "bucket": {
+               "name": "test-bucket"
+            },
+            "object": {
+               "key": "local-test.csv",
+               "size": 68221,
+               "eTag": "32d82e8a2e72af004c557c4e369e89ff",
+               "sequencer": "0062DE63CC330B223E"
+            }
+         }
+      }
+   ]
+}
