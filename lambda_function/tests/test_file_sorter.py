@@ -1,24 +1,71 @@
 import os
+from pathlib import Path
+
 import boto3
 import pytest
-from moto import mock_s3, mock_timestreamwrite
+from moto import mock_aws
 from sdc_aws_utils.aws import create_s3_file_key
-from pathlib import Path
-from slack_sdk.errors import SlackApiError
-from unittest.mock import patch
-
-# Constants
-os.environ["SDC_AWS_CONFIG_FILE_PATH"] = "lambda_function/src/config.yaml"
+from sdc_aws_utils.config import get_incoming_bucket, get_instrument_bucket, parser
 from src.file_sorter import file_sorter
-from sdc_aws_utils.config import parser
 
-INCOMING_BUCKET = "swsoc-incoming"
-TEST_BUCKET = "hermes-spani"
-TEST_BAD_FILE = "/tests/test_files/test-file-key.txt"
-TEST_MISSING_FILE = "/tests/test_files/missing-file-key.txt"
-TEST_L0_FILE = "/tests/test_files/hermes_SPANI_l0_2023040-000018_v01.bin"
 TEST_REGION = "us-east-1"
 ENVIRONMENT = "PRODUCTION"
+
+
+POSITIVE_CASES = [
+    # HERMES
+    {
+        "mission": "hermes",
+        "instrument": "eea",
+        "file_key": "/tests/test_files/hermes_EEA_l0_2025337-124603_v11.bin",
+    },
+    {
+        "mission": "hermes",
+        "instrument": "nemisis",
+        "file_key": "/tests/test_files/hermes_NEM_l0_2024094-124603_v01.bin",
+    },
+    {
+        "mission": "hermes",
+        "instrument": "merit",
+        "file_key": "/tests/test_files/hermes_MERIT_l0_2025215-124603_v21.bin",
+    },
+    {
+        "mission": "hermes",
+        "instrument": "spani",
+        "file_key": "/tests/test_files/hermes_spn_2s_l3test_burst_20240406T120621_v2.4.5.cdf",
+    },
+    # PADRE
+    {
+        "mission": "padre",
+        "instrument": "meddea",
+        "file_key": "/tests/test_files/padre_MEDDEA_l0_2025131-192102_v3.bin",
+    },
+    {
+        "mission": "padre",
+        "instrument": "sharp",
+        "file_key": "/tests/test_files/padre_sharp_ql_20230430T000000_v0.0.1.fits",
+    },
+    {
+        "mission": "padre",
+        "instrument": "craft",
+        "file_key": "/tests/test_files/padre_get_EPS_9_Data_1762008094193_1762187403300.csv",
+    },
+    # SWxSOC Pipeline
+    {
+        "mission": "swxsoc_pipeline",
+        "instrument": "reach",
+        "file_key": "/tests/test_files/REACH-ALL_20251205T060517_20251205T060517.csv",
+    },
+    {
+        "mission": "swxsoc_pipeline",
+        "instrument": "reach",
+        "file_key": "/tests/test_files/reach_all_l1c_prelim_20260101T000000_v1.0.1.cdf",
+    },
+]
+
+
+NEGATIVE_INVALID_FILE_KEY = "/tests/test_files/test-file-key.txt"
+NEGATIVE_MISSING_FILE_KEY = "/tests/test_files/missing-file-key.txt"
 
 
 # Fixtures
@@ -34,23 +81,37 @@ def aws_credentials():
 @pytest.fixture(scope="function")
 def s3_client(aws_credentials):
     """S3 client fixture"""
-    with mock_s3():
+    with mock_aws():
         conn = boto3.client("s3", region_name=TEST_REGION)
-        conn.create_bucket(Bucket=TEST_BUCKET)
         yield conn
 
 
 @pytest.fixture(scope="function")
 def timestream_client(aws_credentials):
     """Timestream client fixture"""
-    with mock_timestreamwrite():
+    with mock_aws():
         conn = boto3.client("timestream-write", region_name=TEST_REGION)
         yield conn
 
 
 # Utility Functions
 def create_s3_event(bucket_name, object_key):
-    """Create S3 Event"""
+    """
+    Create a mock S3 event payload.
+
+    Parameters
+    ----------
+    bucket_name : str
+        The name of the S3 bucket that received the object.
+    object_key : str
+        The key (path) of the object within the bucket.
+
+    Returns
+    -------
+    dict
+        A dictionary representing an S3 event with a single ``ObjectCreated:Put``
+        record, matching the structure delivered by AWS Lambda triggers.
+    """
     return {
         "Records": [
             {
@@ -85,24 +146,66 @@ def create_s3_event(bucket_name, object_key):
     }
 
 
-def setup_environment(s3_client, timestream_client):
-    """Utility function to set up the environment for testing."""
+def setup_environment(
+    s3_client,
+    timestream_client,
+    incoming_bucket,
+    destination_buckets,
+    existing_object_keys,
+):
+    """
+    Set up AWS resources and environment variables required for testing.
+
+    Creates the necessary S3 buckets and uploads test objects, creates the
+    Timestream database and table, and sets Lambda-related environment
+    variables.  Silently ignores ``ConflictException`` when the Timestream
+    resources already exist.
+
+    Parameters
+    ----------
+    s3_client : botocore.client.S3
+        A mocked boto3 S3 client (provided by the ``s3_client`` fixture).
+    timestream_client : botocore.client.TimestreamWrite
+        A mocked boto3 Timestream Write client (provided by the
+        ``timestream_client`` fixture).
+
+    Returns
+    -------
+    None
+    """
+
+    def _get_timestream_names(environment):
+        """Return mission-aware Timestream database and table names."""
+        mission_name = os.getenv("SWXSOC_MISSION")
+        if not mission_name or mission_name == "hermes":
+            database_name = "sdc_aws_logs"
+            table_name = "sdc_aws_s3_bucket_log_table"
+        else:
+            database_name = f"{mission_name}_sdc_aws_logs"
+            table_name = f"{mission_name}_sdc_aws_s3_bucket_log_table"
+
+        if environment == "DEVELOPMENT":
+            database_name = f"dev-{database_name}"
+            table_name = f"dev-{table_name}"
+
+        return database_name, table_name
 
     # Create buckets in S3
-    s3_client.create_bucket(Bucket=TEST_BUCKET)
-    s3_client.create_bucket(Bucket=INCOMING_BUCKET)
-    s3_client.put_object(Bucket=INCOMING_BUCKET, Key=TEST_L0_FILE, Body=b"test file")
-    s3_client.put_object(Bucket=INCOMING_BUCKET, Key=TEST_BAD_FILE, Body=b"test file")
+    s3_client.create_bucket(Bucket=incoming_bucket)
+    for bucket in destination_buckets:
+        s3_client.create_bucket(Bucket=bucket)
+
+    for key in existing_object_keys:
+        s3_client.put_object(Bucket=incoming_bucket, Key=key, Body=b"test file")
 
     # Set up the database and table in Timestream
+    database_name, table_name = _get_timestream_names(ENVIRONMENT)
     try:
-        timestream_client.create_database(DatabaseName="sdc_aws_logs")
+        timestream_client.create_database(DatabaseName=database_name)
     except timestream_client.exceptions.ConflictException:
         pass
     try:
-        timestream_client.create_table(
-            DatabaseName="sdc_aws_logs", TableName="sdc_aws_s3_bucket_log_table"
-        )
+        timestream_client.create_table(DatabaseName=database_name, TableName=table_name)
     except timestream_client.exceptions.ConflictException:
         pass
 
@@ -111,164 +214,204 @@ def setup_environment(s3_client, timestream_client):
     os.environ["SDC_AWS_SLACK_CHANNEL"] = "test-channel"
 
 
-def mock_failed_get_slack_client():
-    """Raise a SlackApiError with a 404 error."""
-    response = {"Error": {"Code": "404"}}
-    raise SlackApiError(response=response, message="Invalid token")
+def setup_case_environment(s3_client, timestream_client, instrument, file_key):
+    """Create case-specific resources for an incoming file and target instrument bucket."""
+    incoming_bucket = get_incoming_bucket(ENVIRONMENT)
+    destination_bucket = get_instrument_bucket(instrument, ENVIRONMENT)
+    setup_environment(
+        s3_client=s3_client,
+        timestream_client=timestream_client,
+        incoming_bucket=incoming_bucket,
+        destination_buckets=[destination_bucket],
+        existing_object_keys=[file_key],
+    )
+    return incoming_bucket, destination_bucket
+
+
+def assert_file_sorted(s3_client, destination_bucket, file_key):
+    """Assert that a file was written to the expected destination key."""
+    expected_key = create_s3_file_key(parser, Path(file_key).name)
+    objects = s3_client.list_objects(Bucket=destination_bucket).get("Contents")
+    assert objects
+    assert objects[0].get("Key") == expected_key
 
 
 # Tests handle_event Function
-@mock_s3
-def test_handle_event_s3_event(s3_client, timestream_client):
-    # Set up environment
-    setup_environment(s3_client, timestream_client)
+@pytest.mark.parametrize(
+    ("use_mission", "case"),
+    [
+        pytest.param(
+            case["mission"],
+            case,
+            id=f"{case['mission']}-{case['instrument']}-{Path(case['file_key']).suffix.lstrip('.')}",
+        )
+        for case in POSITIVE_CASES
+    ],
+    indirect=["use_mission"],
+)
+def test_file_sorter(s3_client, timestream_client, use_mission, case):
+    """Test successful sorting across supported missions and instruments."""
+    incoming_bucket, destination_bucket = setup_case_environment(
+        s3_client=s3_client,
+        timestream_client=timestream_client,
+        instrument=case["instrument"],
+        file_key=case["file_key"],
+    )
 
-    # Create S3 event
-    s3_event = create_s3_event(INCOMING_BUCKET, TEST_L0_FILE)
-
-    # Test normal successful run
+    s3_event = create_s3_event(incoming_bucket, case["file_key"])
     response = file_sorter.handle_event(event=s3_event, context=None)
 
+    # Successful run should return 200 status code
     assert response["statusCode"] == 200
+    assert_file_sorted(s3_client, destination_bucket, case["file_key"])
 
-    # Test Error handling
-    s3_event = create_s3_event(INCOMING_BUCKET, TEST_BAD_FILE)
+
+def test_file_sorter_missing_file(s3_client, timestream_client):
+    """Test handling of an S3 event where the specified file is missing from the bucket."""
+    incoming_bucket, destination_bucket = setup_case_environment(
+        s3_client=s3_client,
+        timestream_client=timestream_client,
+        instrument="spani",
+        file_key=NEGATIVE_INVALID_FILE_KEY,
+    )
+
+    s3_event = create_s3_event(incoming_bucket, NEGATIVE_MISSING_FILE_KEY)
+    response = file_sorter.handle_event(event=s3_event, context=None)
+
+    assert response["statusCode"] == 500
+    assert not s3_client.list_objects(Bucket=destination_bucket).get("Contents")
+
+
+def test_file_sorter_bad_file(s3_client, timestream_client):
+    """Test handling of an S3 event where the specified file is invalid or cannot be processed."""
+    incoming_bucket, destination_bucket = setup_case_environment(
+        s3_client=s3_client,
+        timestream_client=timestream_client,
+        instrument="spani",
+        file_key=NEGATIVE_INVALID_FILE_KEY,
+    )
+
+    s3_event = create_s3_event(incoming_bucket, NEGATIVE_INVALID_FILE_KEY)
+    response = file_sorter.handle_event(event=s3_event, context=None)
+
+    assert response["statusCode"] == 500
+    assert not s3_client.list_objects(Bucket=destination_bucket).get("Contents")
+
+
+def test_file_sorter_missing_s3_bucket(s3_client):
+    """Test handling of an S3 event where the specified bucket is missing."""
+
+    s3_event = create_s3_event("missing-incoming-bucket", NEGATIVE_INVALID_FILE_KEY)
     response = file_sorter.handle_event(event=s3_event, context=None)
 
     assert response["statusCode"] == 500
 
 
-@mock_s3
-def test_handle_event_trigger(s3_client, timestream_client):
-    # Set up environment
-    setup_environment(s3_client, timestream_client)
+@pytest.mark.parametrize(
+    "use_mission", ["hermes", "padre", "swxsoc_pipeline"], indirect=True
+)
+def test_file_sorter_empty_trigger(s3_client, timestream_client, use_mission):
+    """Test handling of an empty trigger event."""
+    instrument = (
+        "spani"
+        if use_mission == "hermes"
+        else "meddea"
+        if use_mission == "padre"
+        else "reach"
+    )
+    file_key = (
+        "/tests/test_files/hermes_SPANI_l0_2023040-000018_v01.bin"
+        if use_mission == "hermes"
+        else "/tests/test_files/padre_MEDDEA_l0_2025131-192102_v3.bin"
+        if use_mission == "padre"
+        else "/tests/test_files/REACH-ALL_20251205T060517_20251205T060517.csv"
+    )
 
-    # Create trigger event
+    _incoming_bucket, destination_bucket = setup_case_environment(
+        s3_client=s3_client,
+        timestream_client=timestream_client,
+        instrument=instrument,
+        file_key=file_key,
+    )
+
     trigger_event = {}
-
-    # Test normal successful run of trigger event
     response = file_sorter.handle_event(event=trigger_event, context=None)
 
     assert response["statusCode"] == 200
 
-    # Test already existing file
-    s3_client.put_object(Bucket=TEST_BUCKET, Key=TEST_L0_FILE, Body=b"test file")
+    # Ensure no crash when file already exists in target bucket.
+    s3_client.put_object(
+        Bucket=destination_bucket,
+        Key=create_s3_file_key(parser, Path(file_key).name),
+        Body=b"test file",
+    )
     response = file_sorter.handle_event(event=trigger_event, context=None)
 
     assert response["statusCode"] == 200
 
 
 # Tests FileSorter class
-@mock_s3
-def test_file_sorter_dry_run(s3_client, timestream_client):
-    # Set up environment
-    setup_environment(s3_client, timestream_client)
+@pytest.mark.parametrize(
+    ("use_mission", "instrument", "file_key"),
+    [
+        pytest.param(
+            "hermes",
+            "spani",
+            "/tests/test_files/hermes_SPANI_l0_2023040-000018_v01.bin",
+            id="hermes",
+        ),
+        pytest.param(
+            "padre",
+            "meddea",
+            "/tests/test_files/padre_MEDDEA_l0_2025131-192102_v3.bin",
+            id="padre",
+        ),
+        pytest.param(
+            "swxsoc_pipeline",
+            "reach",
+            "/tests/test_files/reach_all_l1c_prelim_20260101T000000_v1.0.1.cdf",
+            id="swxsoc_pipeline",
+        ),
+    ],
+    indirect=["use_mission"],
+)
+def test_file_sorter_dry_run(
+    s3_client, timestream_client, use_mission, instrument, file_key
+):
+    """Test Dry-Run Mode doesn't move files in S3"""
+    incoming_bucket, destination_bucket = setup_case_environment(
+        s3_client=s3_client,
+        timestream_client=timestream_client,
+        instrument=instrument,
+        file_key=file_key,
+    )
 
     file_sorter.FileSorter(
-        s3_bucket=INCOMING_BUCKET,
-        file_key=TEST_L0_FILE,
+        s3_bucket=incoming_bucket,
+        file_key=file_key,
         environment=ENVIRONMENT,
         dry_run=True,
         s3_client=s3_client,
         timestream_client=timestream_client,
     )
 
-    # Check that the file was not copied during a dry run
-    assert not s3_client.list_objects(Bucket=TEST_BUCKET).get("Contents")
+    assert not s3_client.list_objects(Bucket=destination_bucket).get("Contents")
 
 
-@mock_s3
-def test_file_sorter(s3_client, timestream_client):
-    # Set up environment
-    setup_environment(s3_client, timestream_client)
-
-    file_sorter.FileSorter(
-        INCOMING_BUCKET,
-        TEST_L0_FILE,
-        ENVIRONMENT,
-        dry_run=False,
-        s3_client=s3_client,
-        timestream_client=timestream_client,
-    )
-
-    path_file = Path(TEST_L0_FILE).name
-
-    # Check that the file was copied to the correct HERMES folder
-    assert s3_client.list_objects(
-        Bucket=TEST_BUCKET,
-    ).get(
-        "Contents"
-    )[0].get(
-        "Key"
-    ) == create_s3_file_key(parser, path_file)
-
-
-@mock_s3
-def test_file_sorter_missing_file(s3_client, timestream_client):
-    # Set up environment
-    setup_environment(s3_client, timestream_client)
-
-    try:
-        file_sorter.FileSorter(
-            INCOMING_BUCKET,
-            TEST_MISSING_FILE,
-            ENVIRONMENT,
-            dry_run=True,
-        )
-        assert False
-    except ValueError as e:
-        assert e is not None
-
-    assert not s3_client.list_objects(Bucket=TEST_BUCKET).get("Contents")
-
-
-@mock_s3
-def test_file_sorter_bad_file(s3_client, timestream_client):
-    # Set up environment
-    setup_environment(s3_client, timestream_client)
-
-    try:
-        file_sorter.FileSorter(
-            INCOMING_BUCKET,
-            TEST_BAD_FILE,
-            ENVIRONMENT,
-            dry_run=True,
-        )
-        assert False
-    except ValueError as e:
-        assert e is not None
-
-    assert not s3_client.list_objects(Bucket=TEST_BUCKET).get("Contents")
-
-
-@mock_s3
-def test_file_sorter_missing_s3_bucket(s3_client):
-    try:
-        file_sorter.FileSorter(
-            TEST_BUCKET,
-            TEST_L0_FILE,
-            ENVIRONMENT,
-            dry_run=False,
-            s3_client=s3_client,
-        )
-        assert False
-    except Exception as e:
-        assert e is not None
-
-
-@mock_s3
 def test_file_sorter_missing_timestream(s3_client):
-    test_incoming_bucket = f"dev-{INCOMING_BUCKET}"
-    test_target_bucket = f"dev-{TEST_BUCKET}"
+    """Test handling of missing Timestream client during FileSorter initialization."""
+    test_incoming_bucket = get_incoming_bucket("DEVELOPMENT")
+    test_target_bucket = get_instrument_bucket("spani", "DEVELOPMENT")
+    test_file_key = "/tests/test_files/hermes_SPANI_l0_2023040-000018_v01.bin"
     s3_client.create_bucket(Bucket=test_incoming_bucket)
     s3_client.create_bucket(Bucket=test_target_bucket)
     s3_client.put_object(
-        Bucket=test_incoming_bucket, Key=TEST_L0_FILE, Body=b"test file"
+        Bucket=test_incoming_bucket, Key=test_file_key, Body=b"test file"
     )
     try:
         file_sorter.FileSorter(
             test_incoming_bucket,
-            TEST_L0_FILE,
+            test_file_key,
             "DEVELOPMENT",
             dry_run=False,
             s3_client=s3_client,

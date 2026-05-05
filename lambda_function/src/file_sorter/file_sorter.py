@@ -3,29 +3,29 @@ FileSorter class that will sort the files into the appropriate
 HERMES instrument folder.
 """
 
-import os
 import json
+import os
 from pathlib import Path
 
-from slack_sdk.errors import SlackApiError
-from swxsoc.util.util import parse_science_filename
-from sdc_aws_utils.logging import log, configure_logger
 from sdc_aws_utils.aws import (
-    create_s3_client_session,
-    create_timestream_client_session,
+    check_file_existence_in_target_buckets,
     copy_file_in_s3,
+    create_s3_client_session,
+    create_s3_file_key,
+    create_timestream_client_session,
+    list_files_in_bucket,
     log_to_timestream,
     object_exists,
-    check_file_existence_in_target_buckets,
-    create_s3_file_key,
-    list_files_in_bucket,
 )
-from sdc_aws_utils.slack import get_slack_client, send_pipeline_notification
 from sdc_aws_utils.config import (
+    get_all_instrument_buckets,
     get_incoming_bucket,
     get_instrument_bucket,
-    get_all_instrument_buckets,
 )
+from sdc_aws_utils.logging import configure_logger, log
+from sdc_aws_utils.slack import get_slack_client, send_pipeline_notification
+from slack_sdk.errors import SlackApiError
+from swxsoc.util.util import parse_science_filename
 
 # Configure logging levels and format
 configure_logger()
