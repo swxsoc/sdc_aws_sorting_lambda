@@ -9,8 +9,6 @@ from pathlib import Path
 from typing import Any
 
 from botocore.client import BaseClient
-
-
 from sdc_aws_utils.aws import (
     check_file_existence_in_target_buckets,
     copy_file_in_s3,

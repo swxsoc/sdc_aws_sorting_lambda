@@ -26,7 +26,6 @@ def default_test_mission(monkeypatch):
     mission in their example code if they need a specific mission configuration.
     """
     import swxsoc
-
     from sdc_aws_utils.config import _reconfigure_globals
 
     # Only set if not already set (allows tests to override)
@@ -74,7 +73,6 @@ def use_mission(request, monkeypatch):
             assert swxsoc.config['mission']['mission_name'] == use_mission
     """
     import swxsoc
-
     from sdc_aws_utils.config import _reconfigure_globals
 
     mission = request.param if hasattr(request, "param") else "hermes"
