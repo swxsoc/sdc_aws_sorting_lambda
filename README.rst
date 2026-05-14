@@ -33,7 +33,7 @@ Running Unit Tests
 
 .. code-block:: sh
 
-    pytest lambda_function/tests --cov=lambda_function/src
+    pytest --pyargs lambda_function/tests --cov=lambda_function/src --cov-report=html
 
 Testing Lambda Locally
 ----------------------
