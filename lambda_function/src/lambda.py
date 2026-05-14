@@ -3,19 +3,26 @@ Handler function and the main function for the AWS Lambda,
 which initializes the FileSorter class in the appropriate environment.
 """
 
+from typing import Any
+
 from file_sorter import file_sorter
 
 
-def handler(event, context):
+def handler(event: dict[str, Any], context: Any) -> dict[str, int | str]:
     """
-    Initialize the FileSorter class in the appropriate environment.
+    Handle the AWS Lambda invocation.
 
-    :param event: The event object containing the S3 bucket and file key
-    :type event: dict
-    :param context: The context object containing the AWS Lambda runtime information
-    :type context: dict
-    :return: The response object with status code and message
-    :rtype: dict
+    Parameters
+    ----------
+    event : dict[str, Any]
+        Lambda event payload, typically containing S3 event records.
+    context : Any
+        AWS Lambda runtime context object.
+
+    Returns
+    -------
+    dict[str, int | str]
+        Response dictionary containing ``statusCode`` and serialized ``body``.
     """
 
     return file_sorter.handle_event(event, context)

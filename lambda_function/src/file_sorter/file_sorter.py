@@ -6,6 +6,10 @@ HERMES instrument folder.
 import json
 import os
 from pathlib import Path
+from typing import Any
+
+from botocore.client import BaseClient
+
 
 from sdc_aws_utils.aws import (
     check_file_existence_in_target_buckets,
@@ -31,14 +35,22 @@ from swxsoc.util.util import parse_science_filename
 configure_logger()
 
 
-def handle_event(event, context):
+def handle_event(event: dict[str, Any], context: Any) -> dict[str, int | str]:
     """
-    Initialize the FileSorter class in the appropriate environment.
+    Process a Lambda event and dispatch file sorting work.
 
-    :param event: The triggering AWS Lambda event
-    :param context: The AWS Lambda context object
-    :return: The response object with status code and message
-    :rtype: dict
+    Parameters
+    ----------
+    event : dict[str, Any]
+        Triggering AWS Lambda event. Supports S3 ``Records`` events and empty
+        events that trigger a full incoming-bucket scan and sorting of all files.
+    context : Any
+        AWS Lambda context object (accepted for compatibility).
+
+    Returns
+    -------
+    dict[str, int | str]
+        Response dictionary containing ``statusCode`` and serialized ``body``.
     """
 
     environment = os.getenv("LAMBDA_ENVIRONMENT", "DEVELOPMENT")
@@ -98,12 +110,27 @@ class FileSorter:
         s3_bucket: str,
         file_key: str,
         environment: str,
-        dry_run=False,
-        s3_client: type = None,
-        timestream_client: type = None,
-    ):
+        dry_run: bool = False,
+        s3_client: BaseClient | None = None,
+        timestream_client: BaseClient | None = None,
+    ) -> None:
         """
-        Initialize the FileSorter object.
+        Initialize sorter dependencies and process the requested file.
+
+        Parameters
+        ----------
+        s3_bucket : str
+            Source incoming S3 bucket name.
+        file_key : str
+            Source object key to sort.
+        environment : str
+            Deployment environment name.
+        dry_run : bool, optional
+            If ``True``, skip S3 copy/delete side effects.
+        s3_client : BaseClient | None, optional
+            Preconfigured S3 client. If ``None``, one is created.
+        timestream_client : BaseClient | None, optional
+            Preconfigured Timestream client. If ``None``, one is created.
         """
         log.info("Initializing FileSorter with parameters:")
         log.info(f"S3 Bucket: {s3_bucket}")
@@ -184,64 +211,71 @@ class FileSorter:
         """
         Determine the correct sorting function based on the file key name.
         """
+
         if (
-            object_exists(
+            not object_exists(
                 s3_client=self.s3_client,
                 bucket=self.incoming_bucket_name,
                 file_key=self.file_key,
             )
-            or self.dry_run
+            and not self.dry_run
         ):
-            try:
-                # Get file name from file key
-                path_file = Path(self.file_key)
-                new_file_key = create_s3_file_key(
-                    parse_science_filename, path_file.name
-                )
-            except ValueError:
-                log.warning(f"Error parsing file key: {self.file_key}")
-                return None
-
-            log.info(
-                f"Copying {self.file_key} from {self.incoming_bucket_name}"
-                f"to {self.destination_bucket}"
+            log.error(
+                f"File {self.file_key} does not exist in bucket {self.incoming_bucket_name}"
             )
-
-            if not self.dry_run:
-                # Copy file from source to destination
-                copy_file_in_s3(
-                    s3_client=self.s3_client,
-                    source_bucket=self.incoming_bucket_name,
-                    destination_bucket=self.destination_bucket,
-                    file_key=self.file_key,
-                    new_file_key=new_file_key,
-                )
-
-                # If Slack is enabled, send a slack notification
-                if self.slack_client:
-                    send_pipeline_notification(
-                        slack_client=self.slack_client,
-                        slack_channel=self.slack_channel,
-                        path=new_file_key,
-                        bucket_name=self.incoming_bucket_name,
-                        alert_type="sorted",
-                    )
-
-                # If Timestream is enabled, log the file
-                if self.timestream_client:
-                    log_to_timestream(
-                        timestream_client=self.timestream_client,
-                        action_type="PUT",
-                        file_key=self.file_key,
-                        new_file_key=new_file_key,
-                        source_bucket=self.incoming_bucket_name,
-                        destination_bucket=self.destination_bucket,
-                        environment=self.environment,
-                    )
-
-            log.info(
-                f"File {self.file_key} Successfully Moved to {self.destination_bucket}"
-            )
-
-        else:
             raise ValueError("File does not exist in bucket")
+
+        # Try to parse the file key and create the new file key for the destination bucket
+        try:
+            # Get file name from file key
+            path_file = Path(self.file_key)
+            new_file_key = create_s3_file_key(parse_science_filename, path_file.name)
+        except ValueError:
+            log.warning(f"Error parsing file key: {self.file_key}")
+            return None
+
+        log.info(
+            f"Copying {self.file_key} from {self.incoming_bucket_name}"
+            f"to {self.destination_bucket}"
+        )
+
+        if self.dry_run:
+            log.info(
+                f"Dry Run: Skipping copy of {self.file_key} to {self.destination_bucket}"
+            )
+            return None
+
+        # Copy file from source to destination
+        copy_file_in_s3(
+            s3_client=self.s3_client,
+            source_bucket=self.incoming_bucket_name,
+            destination_bucket=self.destination_bucket,
+            file_key=self.file_key,
+            new_file_key=new_file_key,
+        )
+
+        # If Slack is enabled, send a slack notification
+        if self.slack_client:
+            send_pipeline_notification(
+                slack_client=self.slack_client,
+                slack_channel=self.slack_channel,
+                path=new_file_key,
+                bucket_name=self.incoming_bucket_name,
+                alert_type="sorted",
+            )
+
+        # If Timestream is enabled, log the file
+        if self.timestream_client:
+            log_to_timestream(
+                timestream_client=self.timestream_client,
+                action_type="PUT",
+                file_key=self.file_key,
+                new_file_key=new_file_key,
+                source_bucket=self.incoming_bucket_name,
+                destination_bucket=self.destination_bucket,
+                environment=self.environment,
+            )
+
+        log.info(
+            f"File {self.file_key} Successfully Moved to {self.destination_bucket}"
+        )
