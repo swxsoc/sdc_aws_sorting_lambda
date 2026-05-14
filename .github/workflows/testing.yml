@@ -10,11 +10,10 @@ on:
     - cron: 0 0 * * * # Scheduled run every day at midnight
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
-
+    - uses: actions/checkout@v4
     # Set up Python 3.10 to match the version of Python used in AWS Lambda
     - name: Set up Python 3.10
       uses: actions/setup-python@v5
@@ -26,12 +25,12 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install -r requirements.dev.txt
 
-
     - name: Run tests
       run: |
         pytest -s lambda_function/tests --cov=lambda_function/src --cov-report=html --log-cli-level=INFO 
 
-    - name: Upload coverage reports to Codecov
-      uses: codecov/test-results-action@v1
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
+    # Upload coverage reports to Codecov
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      env:
+         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
