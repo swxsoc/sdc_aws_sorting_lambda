@@ -33,7 +33,7 @@ Running Unit Tests
 
 .. code-block:: sh
 
-    pytest lambda_function/tests
+    pytest lambda_function/tests --cov=lambda_function/src
 
 Testing Lambda Locally
 ----------------------
@@ -50,13 +50,16 @@ To test the Lambda function locally using Docker:
 
     .. code-block:: sh
 
-         docker run -p 9000:8080 -v sdc_aws_sorting_lambda/lambda_function/tests/test_data:/test_data sdc_aws_sorting_lambda:latest
+         docker run \
+           -p 9000:8080 \
+           -v "$(pwd)/tests/test_data:/test_data" \
+           sdc_aws_sorting_lambda:latest
 
 3. From a separate terminal, make a curl request to the running Lambda function:
 
     .. code-block:: sh
 
-         curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d @lambda_function/tests/test_data/test_padre_event.json
+         curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d @tests/test_data/test_padre_event.json
 
 
 Acknowledgements
