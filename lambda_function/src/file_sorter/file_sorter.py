@@ -1,6 +1,5 @@
 """
-FileSorter class that will sort the files into the appropriate
-HERMES instrument folder.
+FileSorter class that will sort the files into the appropriate instrument folder.
 """
 
 import json
