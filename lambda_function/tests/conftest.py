@@ -5,6 +5,7 @@ These fixtures are automatically available to all test modules in the package.
 """
 
 import os
+from types import SimpleNamespace
 
 import pytest
 
@@ -88,3 +89,20 @@ def use_mission(request, monkeypatch):
     monkeypatch.setenv("SWXSOC_MISSION", "hermes")
     swxsoc._reconfigure()
     _reconfigure_globals()
+
+
+@pytest.fixture(autouse=True, scope="function")
+def mock_slack_notifications(monkeypatch):
+    """Short-circuit Slack setup and notification sends during unit tests."""
+    from src.file_sorter import file_sorter
+
+    monkeypatch.setattr(
+        file_sorter,
+        "get_slack_client",
+        lambda slack_token=None: SimpleNamespace(),
+    )
+    monkeypatch.setattr(
+        file_sorter,
+        "send_pipeline_notification",
+        lambda **kwargs: True,
+    )

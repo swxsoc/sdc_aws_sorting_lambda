@@ -3,7 +3,7 @@ from pathlib import Path
 
 import boto3
 import pytest
-from moto import mock_aws
+from moto import mock_aws as moto_mock_aws
 from sdc_aws_utils.aws import create_s3_file_key
 from sdc_aws_utils.config import get_incoming_bucket, get_instrument_bucket, parser
 from src.file_sorter import file_sorter
@@ -79,19 +79,24 @@ def aws_credentials():
 
 
 @pytest.fixture(scope="function")
-def s3_client(aws_credentials):
-    """S3 client fixture"""
-    with mock_aws():
-        conn = boto3.client("s3", region_name=TEST_REGION)
-        yield conn
+def mock_aws():
+    """Mock AWS services using moto."""
+    with moto_mock_aws():
+        yield
 
 
 @pytest.fixture(scope="function")
-def timestream_client(aws_credentials):
+def s3_client(aws_credentials, mock_aws):
+    """S3 client fixture"""
+    conn = boto3.client("s3", region_name=TEST_REGION)
+    yield conn
+
+
+@pytest.fixture(scope="function")
+def timestream_client(aws_credentials, mock_aws):
     """Timestream client fixture"""
-    with mock_aws():
-        conn = boto3.client("timestream-write", region_name=TEST_REGION)
-        yield conn
+    conn = boto3.client("timestream-write", region_name=TEST_REGION)
+    yield conn
 
 
 # Utility Functions
