@@ -1,4 +1,3 @@
-sdc_aws_utils @ git+https://github.com/swxsoc/sdc_aws_utils.git
 swxsoc @ git+https://github.com/swxsoc/swxsoc.git@main
 moto==5.0.15
 pytest==9.0.3
