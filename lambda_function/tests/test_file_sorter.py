@@ -138,7 +138,7 @@ def create_s3_event(bucket_name, object_key):
                     "bucket": {
                         "name": bucket_name,
                         "ownerIdentity": {"principalId": "EXAMPLE"},
-                        "arn": "arn:aws:s3:::{}".format(bucket_name),
+                        "arn": f"arn:aws:s3:::{bucket_name}",
                     },
                     "object": {
                         "key": object_key,

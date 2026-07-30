@@ -223,7 +223,7 @@ class FileSorter:
             new_file_key = create_s3_file_key(parse_science_filename, path_file.name)
         except ValueError:
             log.warning(f"Error parsing file key: {self.file_key}")
-            return None
+            return
 
         log.info(
             f"Copying {self.file_key} from {self.incoming_bucket_name}"
@@ -234,7 +234,7 @@ class FileSorter:
             log.info(
                 f"Dry Run: Skipping copy of {self.file_key} to {self.destination_bucket}"
             )
-            return None
+            return
 
         # Copy file from source to destination
         copy_file_in_s3(
