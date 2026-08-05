@@ -4,9 +4,10 @@ from pathlib import Path
 import boto3
 import pytest
 from moto import mock_aws as moto_mock_aws
-from sdc_aws_utils.aws import create_s3_file_key
-from sdc_aws_utils.config import get_incoming_bucket, get_instrument_bucket, parser
 from src.file_sorter import file_sorter
+from swxsoc.io.s3 import create_s3_file_key
+from swxsoc.util.config import get_incoming_bucket, get_instrument_bucket
+from swxsoc.util.util import parse_science_filename
 
 TEST_REGION = "us-east-1"
 ENVIRONMENT = "PRODUCTION"
@@ -137,7 +138,7 @@ def create_s3_event(bucket_name, object_key):
                     "bucket": {
                         "name": bucket_name,
                         "ownerIdentity": {"principalId": "EXAMPLE"},
-                        "arn": "arn:aws:s3:::{}".format(bucket_name),
+                        "arn": f"arn:aws:s3:::{bucket_name}",
                     },
                     "object": {
                         "key": object_key,
@@ -221,8 +222,9 @@ def setup_environment(
 
 def setup_case_environment(s3_client, timestream_client, instrument, file_key):
     """Create case-specific resources for an incoming file and target instrument bucket."""
-    incoming_bucket = get_incoming_bucket(ENVIRONMENT)
-    destination_bucket = get_instrument_bucket(instrument, ENVIRONMENT)
+    os.environ["LAMBDA_ENVIRONMENT"] = ENVIRONMENT
+    incoming_bucket = get_incoming_bucket()
+    destination_bucket = get_instrument_bucket(instrument)
     setup_environment(
         s3_client=s3_client,
         timestream_client=timestream_client,
@@ -235,7 +237,7 @@ def setup_case_environment(s3_client, timestream_client, instrument, file_key):
 
 def assert_file_sorted(s3_client, destination_bucket, file_key):
     """Assert that a file was written to the expected destination key."""
-    expected_key = create_s3_file_key(parser, Path(file_key).name)
+    expected_key = create_s3_file_key(parse_science_filename, Path(file_key).name)
     objects = s3_client.list_objects(Bucket=destination_bucket).get("Contents")
     assert objects
     assert objects[0].get("Key") == expected_key
@@ -267,7 +269,7 @@ def test_file_sorter(s3_client, timestream_client, use_mission, case):
     response = file_sorter.handle_event(event=s3_event, context=None)
 
     # Successful run should return 200 status code
-    assert response["statusCode"] == 200
+    assert response["statusCode"] == 200, response["body"]
     assert_file_sorted(s3_client, destination_bucket, case["file_key"])
 
 
@@ -347,7 +349,7 @@ def test_file_sorter_empty_trigger(s3_client, timestream_client, use_mission):
     # Ensure no crash when file already exists in target bucket.
     s3_client.put_object(
         Bucket=destination_bucket,
-        Key=create_s3_file_key(parser, Path(file_key).name),
+        Key=create_s3_file_key(parse_science_filename, Path(file_key).name),
         Body=b"test file",
     )
     response = file_sorter.handle_event(event=trigger_event, context=None)
@@ -405,8 +407,8 @@ def test_file_sorter_dry_run(
 
 def test_file_sorter_missing_timestream(s3_client):
     """Test handling of missing Timestream client during FileSorter initialization."""
-    test_incoming_bucket = get_incoming_bucket("DEVELOPMENT")
-    test_target_bucket = get_instrument_bucket("spani", "DEVELOPMENT")
+    test_incoming_bucket = get_incoming_bucket()
+    test_target_bucket = get_instrument_bucket("spani")
     test_file_key = "/tests/test_files/hermes_SPANI_l0_2023040-000018_v01.bin"
     s3_client.create_bucket(Bucket=test_incoming_bucket)
     s3_client.create_bucket(Bucket=test_target_bucket)

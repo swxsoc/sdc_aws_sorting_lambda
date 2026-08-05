@@ -8,28 +8,24 @@ from pathlib import Path
 from typing import Any
 
 from botocore.client import BaseClient
-from sdc_aws_utils.aws import (
+from slack_sdk.errors import SlackApiError
+from swxsoc import log
+from swxsoc.comm.slack import get_slack_client, send_pipeline_notification
+from swxsoc.db.timeseries import create_timestream_client_session, log_to_timestream
+from swxsoc.io.s3 import (
     check_file_existence_in_target_buckets,
     copy_file_in_s3,
     create_s3_client_session,
     create_s3_file_key,
-    create_timestream_client_session,
     list_files_in_bucket,
-    log_to_timestream,
     object_exists,
 )
-from sdc_aws_utils.config import (
+from swxsoc.util.config import (
     get_all_instrument_buckets,
     get_incoming_bucket,
     get_instrument_bucket,
 )
-from sdc_aws_utils.logging import configure_logger, log
-from sdc_aws_utils.slack import get_slack_client, send_pipeline_notification
-from slack_sdk.errors import SlackApiError
 from swxsoc.util.util import parse_science_filename
-
-# Configure logging levels and format
-configure_logger()
 
 
 def handle_event(event: dict[str, Any], context: Any) -> dict[str, int | str]:
@@ -66,8 +62,8 @@ def handle_event(event: dict[str, Any], context: Any) -> dict[str, int | str]:
     else:
         log.info("No records found in event. Checking all files in bucket.")
         s3_client = create_s3_client_session()
-        incoming_bucket = get_incoming_bucket(environment)
-        instrument_buckets = get_all_instrument_buckets(environment)
+        incoming_bucket = get_incoming_bucket()
+        instrument_buckets = get_all_instrument_buckets()
         keys_in_s3 = list_files_in_bucket(s3_client, incoming_bucket)
         for key in keys_in_s3:
             try:
@@ -190,9 +186,7 @@ class FileSorter:
             raise e
 
         self.incoming_bucket_name = s3_bucket
-        self.destination_bucket = get_instrument_bucket(
-            self.science_file["instrument"], environment
-        )
+        self.destination_bucket = get_instrument_bucket(self.science_file["instrument"])
         log.info(
             f"Sorting from Incoming Bucket: {self.incoming_bucket_name} to Destination Bucket: {self.destination_bucket}"
         )
@@ -229,7 +223,7 @@ class FileSorter:
             new_file_key = create_s3_file_key(parse_science_filename, path_file.name)
         except ValueError:
             log.warning(f"Error parsing file key: {self.file_key}")
-            return None
+            return
 
         log.info(
             f"Copying {self.file_key} from {self.incoming_bucket_name}"
@@ -240,7 +234,7 @@ class FileSorter:
             log.info(
                 f"Dry Run: Skipping copy of {self.file_key} to {self.destination_bucket}"
             )
-            return None
+            return
 
         # Copy file from source to destination
         copy_file_in_s3(
@@ -270,7 +264,6 @@ class FileSorter:
                 new_file_key=new_file_key,
                 source_bucket=self.incoming_bucket_name,
                 destination_bucket=self.destination_bucket,
-                environment=self.environment,
             )
 
         log.info(
