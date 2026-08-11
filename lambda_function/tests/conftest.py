@@ -84,17 +84,14 @@ def use_mission(request, monkeypatch):
 
 
 @pytest.fixture(autouse=True, scope="function")
-def mock_slack_notifications(monkeypatch):
-    """Short-circuit Slack setup and notification sends during unit tests."""
+def mock_comms_notifications(monkeypatch):
+    """Short-circuit comms client setup and notification sends during unit tests."""
     from src.file_sorter import file_sorter
 
     monkeypatch.setattr(
         file_sorter,
-        "get_slack_client",
-        lambda slack_token=None: SimpleNamespace(),
-    )
-    monkeypatch.setattr(
-        file_sorter,
-        "send_pipeline_notification",
-        lambda **kwargs: True,
+        "get_comms_client",
+        lambda: SimpleNamespace(
+            send_notification=lambda **kwargs: None, close=lambda: None
+        ),
     )

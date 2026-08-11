@@ -216,6 +216,7 @@ def setup_environment(
         pass
 
     os.environ["LAMBDA_ENVIRONMENT"] = ENVIRONMENT
+    os.environ["COMMS_PLATFORM"] = "slack"
     os.environ["SDC_AWS_SLACK_TOKEN"] = "test-token"
     os.environ["SDC_AWS_SLACK_CHANNEL"] = "test-channel"
 

@@ -8,9 +8,8 @@ from pathlib import Path
 from typing import Any
 
 from botocore.client import BaseClient
-from slack_sdk.errors import SlackApiError
 from swxsoc import log
-from swxsoc.comm.slack import get_slack_client, send_pipeline_notification
+from swxsoc.comm import get_comms_client
 from swxsoc.db.timeseries import create_timestream_client_session, log_to_timestream
 from swxsoc.io.s3 import (
     check_file_existence_in_target_buckets,
@@ -132,39 +131,29 @@ class FileSorter:
         log.info(f"Dry Run: {dry_run}")
 
         try:
-            # Initialize the slack client
-            log.info("Initializing Slack client.")
-            self.slack_client = get_slack_client(
-                slack_token=os.getenv("SDC_AWS_SLACK_TOKEN")
+            log.info("Initializing comms client.")
+            self.comms_client = get_comms_client()
+        except Exception as e:
+            log.error(
+                {
+                    "status": "ERROR",
+                    "message": f"Error initializing comms client: {e}",
+                }
             )
-
-            # Initialize the slack channel
-            self.slack_channel = os.getenv("SDC_AWS_SLACK_CHANNEL")
-        except SlackApiError as e:
-            error_code = int(e.response["Error"]["Code"])
-            self.slack_client = None
-            if error_code == 404:
-                log.error(
-                    {
-                        "status": "ERROR",
-                        "message": "Slack Token is invalid",
-                    }
-                )
+            self.comms_client = None
 
         self.file_key = file_key
 
-        # Send Initial Slack Notification about file upload
-        if self.slack_client:
-            log.info("Sending upload notification to Slack.")
-            send_pipeline_notification(
-                slack_client=self.slack_client,
-                slack_channel=self.slack_channel,
-                path=self.file_key,
+        # Send Initial Notification about file upload
+        if self.comms_client:
+            log.info("Sending upload notification.")
+            self.comms_client.send_notification(
+                file_path=self.file_key,
                 bucket_name=s3_bucket,
                 alert_type="upload",
             )
         else:
-            log.info("Slack client not initialized; skipping upload notification.")
+            log.info("Comms client not initialized; skipping upload notification.")
 
         try:
             log.info("Initializing Timestream client.")
@@ -245,12 +234,10 @@ class FileSorter:
             new_file_key=new_file_key,
         )
 
-        # If Slack is enabled, send a slack notification
-        if self.slack_client:
-            send_pipeline_notification(
-                slack_client=self.slack_client,
-                slack_channel=self.slack_channel,
-                path=new_file_key,
+        # If a comms client is enabled, send a notification
+        if self.comms_client:
+            self.comms_client.send_notification(
+                file_path=new_file_key,
                 bucket_name=self.incoming_bucket_name,
                 alert_type="sorted",
             )
