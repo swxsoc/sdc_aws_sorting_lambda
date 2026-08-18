@@ -78,7 +78,7 @@ lambda_function/src/file_sorter/file_sorter.py imports from swxsoc:
 - **Mocking**: When testing `file_sorter.py`, patch Slack helpers in the module namespace:
   ```python
   # Patch at the import location in file_sorter.py, not slack_sdk
-  with patch('file_sorter.file_sorter.send_pipeline_notification'):
+  with patch("file_sorter.file_sorter.send_pipeline_notification"):
       ...
   ```
 
