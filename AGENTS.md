@@ -22,8 +22,22 @@ pytest --pyargs lambda_function/tests --cov=lambda_function/src --cov-report=htm
 # Build Docker container for local Lambda testing
 cd lambda_function && docker build -t sdc_aws_sorting_lambda:latest .
 
+# Install the Lambda Runtime Interface Emulator for local testing
+mkdir -p ~/.aws-lambda-rie
+curl -Lo ~/.aws-lambda-rie/aws-lambda-rie \
+  https://github.com/aws/aws-lambda-runtime-interface-emulator/releases/download/v1.36/aws-lambda-rie
+echo "ba57f2683260127135ad5ba9bafea141f90492143cbaeb9312cde6dae8d1c08e  $HOME/.aws-lambda-rie/aws-lambda-rie" \
+  | sha256sum --check
+chmod +x ~/.aws-lambda-rie/aws-lambda-rie
+
 # Run Lambda locally and test with sample event
-docker run -p 9000:8080 -v "$(pwd)/tests/test_data:/test_data" sdc_aws_sorting_lambda:latest
+docker run \
+  -p 9000:8080 \
+  -v ~/.aws-lambda-rie:/aws-lambda \
+  -v "$(pwd)/tests/test_data:/test_data" \
+  --entrypoint /aws-lambda/aws-lambda-rie \
+  sdc_aws_sorting_lambda:latest \
+  python3 -m awslambdaric lambda.handler
 curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d @tests/test_data/test_padre_event.json
 ```
 
