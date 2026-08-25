@@ -46,16 +46,33 @@ To test the Lambda function locally using Docker:
 
          docker build -t sdc_aws_sorting_lambda:latest .
 
-2. Run the Lambda container image (after using your MFA script). This starts the Lambda runtime environment:
+2. Download the AWS Lambda Runtime Interface Emulator (RIE) outside the
+   container image. RIE is only needed for local testing and is not included in
+   the image deployed to AWS:
+
+    .. code-block:: sh
+
+         mkdir -p ~/.aws-lambda-rie
+         curl -Lo ~/.aws-lambda-rie/aws-lambda-rie \
+           https://github.com/aws/aws-lambda-runtime-interface-emulator/releases/download/v1.36/aws-lambda-rie
+         echo "ba57f2683260127135ad5ba9bafea141f90492143cbaeb9312cde6dae8d1c08e  $HOME/.aws-lambda-rie/aws-lambda-rie" \
+           | shasum -a 256 -c -
+         chmod +x ~/.aws-lambda-rie/aws-lambda-rie
+
+3. Run the Lambda container image (after using your MFA script). Mounting RIE
+   starts a local version of the Lambda Runtime API:
 
     .. code-block:: sh
 
          docker run \
            -p 9000:8080 \
+           -v ~/.aws-lambda-rie:/aws-lambda \
            -v "$(pwd)/tests/test_data:/test_data" \
-           sdc_aws_sorting_lambda:latest
+           --entrypoint /aws-lambda/aws-lambda-rie \
+           sdc_aws_sorting_lambda:latest \
+           python3 -m awslambdaric lambda.handler
 
-3. From a separate terminal, make a curl request to the running Lambda function:
+4. From a separate terminal, make a curl request to the running Lambda function:
 
     .. code-block:: sh
 
