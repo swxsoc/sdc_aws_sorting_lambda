@@ -1,98 +1,237 @@
 version: 0.2
 
+env:
+  shell: bash
+
 phases:
-  pre_build:
-    commands:
-      - echo Installing Miniconda...
-      - curl -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
-      - bash Miniconda3-latest-Linux-x86_64.sh -b -p $HOME/miniconda
-      - rm -f Miniconda3-latest-Linux-x86_64.sh
-      - echo 'export PATH="$HOME/miniconda/bin:$PATH"' >> $HOME/.bashrc
-      - source $HOME/.bashrc
-      - conda init bash
-      - source $HOME/.bashrc
-      - echo Creating a Python 3.10 environment...
-      - conda create -n myenv python=3.10 -y
-      - echo 'conda activate myenv' >> $HOME/.bashrc
-      - source $HOME/.bashrc
-      
-      - echo Installing CI/CD Dependencies...
-      - pip install flake8 black pytest pytest-astropy pytest-cov
-      - pip install pytest pytest-astropy pytest-cov
-      - pip install -r requirements.dev.txt
-      - echo ________________________________
-
-      - echo Linting with Black...
-      - black --check --diff lambda_function
-      - echo ________________________________
-      
-      - echo Linting with Flake...
-      - echo ________________________________
-
   build:
     commands:
-    - |
-      set -euo pipefail
+      - |
+        set -euo pipefail
 
-      if ! git describe --tags --exact-match > /dev/null 2>&1; then
-        git fetch origin main --depth=1
-        if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
+        SOURCE_KIND=""
+        RELEASE_TAG=""
+
+        case "${CODEBUILD_WEBHOOK_TRIGGER:-}" in
+          tag/*)
+            SOURCE_KIND=tag
+            RELEASE_TAG=${CODEBUILD_WEBHOOK_TRIGGER#tag/}
+            ;;
+          branch/main)
+            SOURCE_KIND=main
+            ;;
+          pr/*|branch/*)
+            SOURCE_KIND=other
+            ;;
+          "") ;;
+          *) SOURCE_KIND=other ;;
+        esac
+
+        if [ -z "${SOURCE_KIND}" ]; then
+          case "${CODEBUILD_SOURCE_VERSION:-}" in
+            refs/tags/*)
+              SOURCE_KIND=tag
+              RELEASE_TAG=${CODEBUILD_SOURCE_VERSION#refs/tags/}
+              ;;
+            refs/heads/main|main)
+              SOURCE_KIND=main
+              ;;
+            pr/*|refs/heads/*)
+              SOURCE_KIND=other
+              ;;
+          esac
+        fi
+
+        if [ -z "${SOURCE_KIND}" ]; then
+          case "${CODEBUILD_WEBHOOK_HEAD_REF:-}" in
+            refs/tags/*)
+              SOURCE_KIND=tag
+              RELEASE_TAG=${CODEBUILD_WEBHOOK_HEAD_REF#refs/tags/}
+              ;;
+          esac
+        fi
+
+        if [ -z "${SOURCE_KIND}" ]; then
+          if RELEASE_TAG=$(git describe --tags --exact-match 2>/dev/null); then
+            SOURCE_KIND=tag
+          else
+            git fetch origin main --depth=1
+            if [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ]; then
+              SOURCE_KIND=main
+            else
+              SOURCE_KIND=other
+            fi
+          fi
+        fi
+
+        if [ "${SOURCE_KIND}" = "other" ]; then
           echo "Non-main build: skipping image push and deployment"
           exit 0
         fi
-      fi
 
-      REGION=us-east-1
-      PUBLIC_ECR_NAMESPACE=public.ecr.aws/w5r9l1c8
-      PROJECT_NAME=${CODEBUILD_BUILD_ID%%:*}
-      PROJECT_MISSION=${PROJECT_NAME#build_}
-      PROJECT_MISSION=${PROJECT_MISSION%_sdc_aws_sorting_lambda}
-      MISSION_NAME=${MISSION_NAME:-${PROJECT_MISSION:-hermes}}
-      MISSION_SLUG=$(printf '%s' "${MISSION_NAME}" | tr '_' '-')
+        if [ "${SOURCE_KIND}" = "main" ]; then
+          git fetch origin main --depth=1
+          BUILD_SHA=${CODEBUILD_RESOLVED_SOURCE_VERSION:-$(git rev-parse HEAD)}
+          if [ "${BUILD_SHA}" != "$(git rev-parse origin/main)" ]; then
+            echo "Stale main build: skipping image push and deployment"
+            exit 0
+          fi
+        fi
 
-      if [ "${MISSION_NAME}" = "hermes" ]; then
-        ECR_REPO_NAME=sdc_aws_sorting_lambda
-        BASE_IMAGE_NAME=swsoc-docker-lambda-base:latest
-      else
-        ECR_REPO_NAME=${MISSION_NAME}_sdc_aws_sorting_lambda
-        BASE_IMAGE_NAME=${MISSION_SLUG}-swsoc-docker-lambda-base:latest
-      fi
+        normalize_environment() {
+          NORMALIZED=$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')
+          case "${NORMALIZED}" in
+            "") echo "" ;;
+            DEV|DEVELOPMENT) echo DEVELOPMENT ;;
+            PROD|PRODUCTION) echo PRODUCTION ;;
+            *)
+              echo "Invalid environment value: $1" >&2
+              return 1
+              ;;
+          esac
+        }
 
-      ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-      aws ecr get-login-password --region "${REGION}" | docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com"
+        CDK_ENVIRONMENT_INPUT=$(normalize_environment "${CDK_ENVIRONMENT:-}")
+        ENVIRONMENT_INPUT=$(normalize_environment "${ENVIRONMENT:-}")
+        if [ -n "${CDK_ENVIRONMENT_INPUT}" ] && [ -n "${ENVIRONMENT_INPUT}" ] && [ "${CDK_ENVIRONMENT_INPUT}" != "${ENVIRONMENT_INPUT}" ]; then
+          echo "CDK_ENVIRONMENT and ENVIRONMENT select different deployment environments"
+          exit 1
+        fi
+        REQUESTED_ENVIRONMENT=${CDK_ENVIRONMENT_INPUT:-${ENVIRONMENT_INPUT}}
 
-      if git describe --tags --exact-match > /dev/null 2>&1; then
-        echo "This is a tag push event"
-        CDK_ENVIRONMENT=PRODUCTION
-        VERSION=$(git describe --tags --exact-match)
-      elif [ "${CDK_ENVIRONMENT:-}" = "PRODUCTION" ]; then
-        echo "This is a production environment"
-        CDK_ENVIRONMENT=PRODUCTION
-        VERSION=$(date -u +"%Y%m%d%H%M%S")
-      else
-        echo "This is a development environment"
-        CDK_ENVIRONMENT=DEVELOPMENT
-        ECR_REPO_NAME=dev-${ECR_REPO_NAME}
-        BASE_IMAGE_NAME=dev-${BASE_IMAGE_NAME}
-        VERSION=$(date -u +"%Y%m%d%H%M%S")
-      fi
+        if [ "${SOURCE_KIND}" = "tag" ]; then
+          if [ "${REQUESTED_ENVIRONMENT}" = "DEVELOPMENT" ]; then
+            echo "A release tag cannot target the development environment"
+            exit 1
+          fi
+          CDK_ENVIRONMENT=PRODUCTION
+          VERSION=${RELEASE_TAG}
+        elif [ "${REQUESTED_ENVIRONMENT}" = "PRODUCTION" ]; then
+          CDK_ENVIRONMENT=PRODUCTION
+          VERSION=$(date -u +"%Y%m%d%H%M%S")
+        else
+          CDK_ENVIRONMENT=DEVELOPMENT
+          VERSION=$(date -u +"%Y%m%d%H%M%S")
+        fi
 
-      ECR_REPO=${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/${ECR_REPO_NAME}
-      BASE_IMAGE=${PUBLIC_ECR_NAMESPACE}/${BASE_IMAGE_NAME}
-      docker build --build-arg BASE_IMAGE="${BASE_IMAGE}" -t "${ECR_REPO}:latest" lambda_function/.
-      docker tag "${ECR_REPO}:latest" "${ECR_REPO}:${VERSION}"
-      docker push "${ECR_REPO}:latest"
-      docker push "${ECR_REPO}:${VERSION}"
+        case "${VERSION}" in
+          ""|*[!A-Za-z0-9_.-]*)
+            echo "Invalid Docker image tag: ${VERSION:-<empty>}"
+            exit 1
+            ;;
+        esac
+        case "${VERSION}" in
+          [A-Za-z0-9_]*) ;;
+          *)
+            echo "Docker image tag must start with a letter, number, or underscore"
+            exit 1
+            ;;
+        esac
+        if [ "${#VERSION}" -gt 128 ]; then
+          echo "Docker image tag exceeds 128 characters"
+          exit 1
+        fi
 
-      aws codebuild start-build \
-        --project-name "build_${MISSION_NAME}_sdc_aws_pipeline_architecture" \
-        --region us-east-1 \
-        --environment-variables-override \
-          name=CDK_ENVIRONMENT,value="${CDK_ENVIRONMENT}",type=PLAINTEXT \
-          name=MISSION_NAME,value="${MISSION_NAME}",type=PLAINTEXT \
-          name=LAMBDA_PIPELINE,value=SORTING,type=PLAINTEXT \
-          name=TAG,value="${VERSION}",type=PLAINTEXT
+        REGION=${AWS_REGION:-${AWS_DEFAULT_REGION:-us-east-1}}
+        PUBLIC_ECR_NAMESPACE=public.ecr.aws/w5r9l1c8
+        PROJECT_NAME=${CODEBUILD_BUILD_ID:-}
+        PROJECT_NAME=${PROJECT_NAME%%:*}
+        case "${PROJECT_NAME}" in
+          build_sdc_aws_sorting_lambda)
+            PROJECT_MISSION=hermes
+            ;;
+          build_*_sdc_aws_sorting_lambda)
+            PROJECT_MISSION=${PROJECT_NAME#build_}
+            PROJECT_MISSION=${PROJECT_MISSION%_sdc_aws_sorting_lambda}
+            ;;
+          *)
+            PROJECT_MISSION=""
+            ;;
+        esac
+        MISSION_NAME=${MISSION_NAME:-${PROJECT_MISSION}}
+        case "${MISSION_NAME}" in
+          ""|*[!a-z0-9_]*)
+            echo "Invalid mission name: ${MISSION_NAME:-<empty>}"
+            exit 1
+            ;;
+        esac
+        if [ -n "${PROJECT_MISSION}" ] && [ "${MISSION_NAME}" != "${PROJECT_MISSION}" ]; then
+          echo "MISSION_NAME=${MISSION_NAME} does not match CodeBuild project mission ${PROJECT_MISSION}"
+          exit 1
+        fi
+        MISSION_SLUG=$(printf '%s' "${MISSION_NAME}" | tr '_' '-')
+
+        if [ "${MISSION_NAME}" = "hermes" ]; then
+          ECR_REPO_NAME=sdc_aws_sorting_lambda
+          BASE_REPO_NAME=swsoc-docker-lambda-base
+        else
+          ECR_REPO_NAME=${MISSION_NAME}_sdc_aws_sorting_lambda
+          if [ "${MISSION_NAME}" = "swxsoc_pipeline" ]; then
+            BASE_REPO_NAME=swxsoc-pipeline-docker-lambda-base
+          else
+            BASE_REPO_NAME=${MISSION_SLUG}-swsoc-docker-lambda-base
+          fi
+        fi
+
+        if [ "${CDK_ENVIRONMENT}" = "DEVELOPMENT" ]; then
+          ECR_REPO_NAME=dev-${ECR_REPO_NAME}
+          BASE_REPO_NAME=dev-${BASE_REPO_NAME}
+          ENVIRONMENT_SLUG=dev
+        else
+          ENVIRONMENT_SLUG=prod
+        fi
+
+        DEFAULT_BASE_IMAGE=${PUBLIC_ECR_NAMESPACE}/${BASE_REPO_NAME}:latest
+        BASE_IMAGE=${DEFAULT_BASE_IMAGE}
+        if [ -n "${PUBLIC_ECR_REPO:-}" ]; then
+          EXPECTED_BASE_PREFIX=${PUBLIC_ECR_NAMESPACE}/${BASE_REPO_NAME}:
+          case "${PUBLIC_ECR_REPO}" in
+            "${EXPECTED_BASE_PREFIX}"*) ;;
+            *)
+              echo "PUBLIC_ECR_REPO must use ${EXPECTED_BASE_PREFIX}<immutable-tag>"
+              exit 1
+              ;;
+          esac
+
+          BASE_IMAGE_TAG=${PUBLIC_ECR_REPO#${EXPECTED_BASE_PREFIX}}
+          case "${BASE_IMAGE_TAG}" in
+            ""|latest|*[!A-Za-z0-9_.-]*|${ENVIRONMENT_SLUG}|${ENVIRONMENT_SLUG}-)
+              echo "PUBLIC_ECR_REPO must contain a valid immutable image tag"
+              exit 1
+              ;;
+            ${ENVIRONMENT_SLUG}-*) ;;
+            *)
+              echo "PUBLIC_ECR_REPO tag must start with ${ENVIRONMENT_SLUG}-"
+              exit 1
+              ;;
+          esac
+          if [ "${#BASE_IMAGE_TAG}" -gt 128 ]; then
+            echo "PUBLIC_ECR_REPO image tag exceeds 128 characters"
+            exit 1
+          fi
+          BASE_IMAGE=${PUBLIC_ECR_REPO}
+        fi
+
+        ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+        aws ecr get-login-password --region "${REGION}" | docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com"
+
+        ECR_REPO=${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/${ECR_REPO_NAME}
+        echo "Building ${ECR_REPO}:${VERSION} from ${BASE_IMAGE}"
+        docker build --build-arg BASE_IMAGE="${BASE_IMAGE}" -t "${ECR_REPO}:latest" lambda_function/.
+        docker tag "${ECR_REPO}:latest" "${ECR_REPO}:${VERSION}"
+        docker push "${ECR_REPO}:latest"
+        docker push "${ECR_REPO}:${VERSION}"
+
+        aws codebuild start-build \
+          --project-name "build_${MISSION_NAME}_sdc_aws_pipeline_architecture" \
+          --region "${REGION}" \
+          --source-version main \
+          --environment-variables-override \
+            name=CDK_ENVIRONMENT,value="${CDK_ENVIRONMENT}",type=PLAINTEXT \
+            name=MISSION_NAME,value="${MISSION_NAME}",type=PLAINTEXT \
+            name=LAMBDA_PIPELINE,value=SORTING,type=PLAINTEXT \
+            name=TAG,value="${VERSION}",type=PLAINTEXT
 
   post_build:
     commands:
-      - echo Build Successful - Lambda Successfully Built and Pushed to ECR
+      - echo "Build phase finished on $(date -u +%Y-%m-%dT%H:%M:%SZ)"

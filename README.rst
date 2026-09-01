@@ -24,9 +24,36 @@ Overview
 
 .. end-badges
 
-This repository is to define the code to be used for the SWSOC file sorting Lambda function. 
-This function will be deployed as a zip file to Lambda, with the production lambda being the latest release and the latest code on the master being used for development and testing. 
-The production lambda will move files into the appropriate buckets while the development lambda will only move files with the prefix `dev_`. 
+This repository defines the SWxSOC file-sorting Lambda container. The function
+moves incoming files to mission and instrument buckets. In ``DEVELOPMENT`` it
+only moves files with the ``dev_`` prefix; in ``PRODUCTION`` it processes all
+matching files.
+
+Runtime Environment Variables
+-----------------------------
+
+- ``LAMBDA_ENVIRONMENT``: ``DEVELOPMENT`` or ``PRODUCTION`` sorting behavior.
+- ``SWXSOC_MISSION``: Mission configuration identifier such as ``hermes``,
+  ``padre``, ``impax``, or ``swxsoc_pipeline``.
+- Communication configuration and credentials are supplied by the architecture
+  Terraform for missions that enable notifications.
+
+Automated Deployment
+--------------------
+
+AWS CodeBuild derives the mission from its project name and publishes the
+container to that mission's ECR repository. A build of ``main`` targets the
+development repository by default; a release tag targets production.
+``CDK_ENVIRONMENT`` or ``ENVIRONMENT`` may explicitly select ``dev``/
+``development`` or ``prod``/``production``. Conflicting or unknown values are
+rejected. Pull requests and other branches do not push or deploy images.
+
+Mission base-image builds can pass ``PUBLIC_ECR_REPO``. Sorting uses that exact
+versioned base-image reference after validating its namespace, repository,
+environment, and non-``latest`` tag. If no pinned reference is provided, a
+mission build uses its environment's ``latest`` base image.
+After publishing the Lambda image, CodeBuild sends its immutable image tag to
+the mission architecture project for Terraform deployment.
 
 Running Unit Tests
 ------------------
