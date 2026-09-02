@@ -103,9 +103,14 @@ See [.github/workflows/](/.github/workflows/) for workflow definitions:
 
 ## Deployment
 
-The function is deployed as a zip file:
-- **Production**: Latest GitHub release
-- **Development/Testing**: Latest commit on `main` branch
+The function is deployed as a container image through AWS CodeBuild:
+- **Production**: A release-tag build, or an explicit production environment
+- **Development/Testing**: A `main` build by default
+- **Isolation**: Pull requests and other branches do not push or deploy images
+- **Downstream**: The immutable image tag is sent to the mission architecture
+  CodeBuild project for Terraform deployment
+- **Mission base-image handoff**: A supplied `PUBLIC_ECR_REPO` must be a pinned
+  base-image reference for the selected mission and environment
 
 ## Key Decisions & Patterns
 
